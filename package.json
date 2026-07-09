@@ -1,6 +1,6 @@
 {
   "name": "@wordbricks/persona",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Brain-inspired persona memory and runtime for LLM agents on Postgres/pgvector via Drizzle.",
   "keywords": [
     "agents",
@@ -23,19 +23,23 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./schema": {
       "types": "./dist/schema/index.d.ts",
-      "import": "./dist/schema/index.js"
+      "import": "./dist/schema/index.js",
+      "default": "./dist/schema/index.js"
     },
     "./memory": {
       "types": "./dist/memory/index.d.ts",
-      "import": "./dist/memory/index.js"
+      "import": "./dist/memory/index.js",
+      "default": "./dist/memory/index.js"
     },
     "./agent": {
       "types": "./dist/agent/index.d.ts",
-      "import": "./dist/agent/index.js"
+      "import": "./dist/agent/index.js",
+      "default": "./dist/agent/index.js"
     }
   },
   "files": [
