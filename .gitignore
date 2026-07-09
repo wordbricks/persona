@@ -1,0 +1,7 @@
+/dist/
+/publish/
+/node_modules/
+/coverage/
+/.turbo/
+*.log
+.DS_Store
