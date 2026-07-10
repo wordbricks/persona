@@ -39,7 +39,7 @@ export type HindsightRecallInput = {
   desiredMemoryTypes: PersonaMemoryType[];
   maxResults: number;
   message: string;
-  organizationId: string;
+  tenantId: string;
   personaId: string;
   personaKey: string;
   retrievalQueries: PersonaTurnPlan["context"]["retrievalQueries"];
@@ -79,7 +79,7 @@ export type HindsightRetainInput = {
   content: string;
   context?: string | null;
   documentId?: string | null;
-  organizationId: string;
+  tenantId: string;
   personaId: string;
   personaKey: string;
   privacyLevel: "public" | "internal" | "private" | "sensitive";
@@ -105,7 +105,7 @@ export type HindsightRetainResult = {
 export type HindsightReflectInput = {
   context?: string | null;
   maxTokens?: number;
-  organizationId: string;
+  tenantId: string;
   personaId: string;
   personaKey: string;
   query: string;
@@ -276,27 +276,27 @@ function bankSegment(value: string): string {
 }
 
 export function hindsightPersonaBankId(input: {
-  organizationId: string;
+  tenantId: string;
   personaId: string;
   scope: "persona_global" | "persona_user";
   userId?: string | null;
 }): string {
-  const org = bankSegment(input.organizationId);
+  const tenant = bankSegment(input.tenantId);
   const persona = bankSegment(input.personaId);
   if (input.scope === "persona_global") {
-    return `persona_${org}_${persona}`;
+    return `persona_${tenant}_${persona}`;
   }
-  return `persona_user_${org}_${persona}_${bankSegment(input.userId ?? "")}`;
+  return `persona_user_${tenant}_${persona}_${bankSegment(input.userId ?? "")}`;
 }
 
 export function hindsightPersonaTags(input: {
-  organizationId: string;
+  tenantId: string;
   personaId: string;
   themes?: string[];
   userId?: string | null;
 }): string[] {
   return [
-    `org_${bankSegment(input.organizationId)}`,
+    `tenant_${bankSegment(input.tenantId)}`,
     `persona_${bankSegment(input.personaId)}`,
     ...(input.userId ? [`user_${bankSegment(input.userId)}`] : []),
     ...(input.themes ?? [])
@@ -487,13 +487,13 @@ export function createHindsightPersonaMemoryClient(
 
       const banks = [
         hindsightPersonaBankId({
-          organizationId: input.organizationId,
+          tenantId: input.tenantId,
           personaId: input.personaId,
           scope: "persona_user",
           userId: input.userId,
         }),
         hindsightPersonaBankId({
-          organizationId: input.organizationId,
+          tenantId: input.tenantId,
           personaId: input.personaId,
           scope: "persona_global",
         }),
@@ -577,7 +577,7 @@ export function createHindsightPersonaMemoryClient(
       }
 
       const bankId = hindsightPersonaBankId({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: input.personaId,
         scope: input.scope,
         userId: input.userId,
@@ -608,7 +608,7 @@ export function createHindsightPersonaMemoryClient(
                 observation_scopes: "shared",
                 tags: [
                   ...hindsightPersonaTags({
-                    organizationId: input.organizationId,
+                    tenantId: input.tenantId,
                     personaId: input.personaId,
                     themes: input.themes,
                     userId: input.userId,
@@ -672,7 +672,7 @@ export function createHindsightPersonaMemoryClient(
         return createSkippedReflectResult("reflect_disabled", config.enabled);
       }
       const bankId = hindsightPersonaBankId({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: input.personaId,
         scope: input.scope,
         userId: input.userId,

@@ -552,14 +552,14 @@ export function truncateLine(line: string, maxChars: number): string {
 
 export async function loadPersonaMoodState(
   db: Database,
-  input: { organizationId: string; personaId: string; userId: string }
+  input: { tenantId: string; personaId: string; userId: string }
 ) {
   const [row] = await db
     .select()
     .from(personaMoodStates)
     .where(
       and(
-        eq(personaMoodStates.organizationId, input.organizationId),
+        eq(personaMoodStates.tenantId, input.tenantId),
         eq(personaMoodStates.personaId, input.personaId),
         eq(personaMoodStates.userId, input.userId)
       )
@@ -572,7 +572,7 @@ export async function persistPersonaMoodState(
   db: Database,
   input: {
     mood: PersonaAffectVector;
-    organizationId: string;
+    tenantId: string;
     personaId: string;
     turnCount: number;
     userId: string;
@@ -583,7 +583,7 @@ export async function persistPersonaMoodState(
     .values({
       arousal: input.mood.arousal,
       dominance: input.mood.dominance,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.personaId,
       turnCount: input.turnCount,
       userId: input.userId,
@@ -598,7 +598,7 @@ export async function persistPersonaMoodState(
         valence: input.mood.valence,
       },
       target: [
-        personaMoodStates.organizationId,
+        personaMoodStates.tenantId,
         personaMoodStates.personaId,
         personaMoodStates.userId,
       ],

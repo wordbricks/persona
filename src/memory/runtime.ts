@@ -577,7 +577,7 @@ async function maybeRecallHindsightPersonaMemory(input: {
   client?: HindsightPersonaMemoryClient | null;
   localSelected: PersonaMemoryCandidate[];
   message: string;
-  organizationId: string;
+  tenantId: string;
   persona: PersonaProfile;
   turnPlan: PersonaTurnPlan;
   userId: string;
@@ -602,7 +602,7 @@ async function maybeRecallHindsightPersonaMemory(input: {
       HINDSIGHT_EXTERNAL_OBSERVATION_PROMPT_CAP +
       HINDSIGHT_EXTERNAL_SOURCE_PROMPT_CAP,
     message: input.message,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: input.persona.id,
     personaKey: input.persona.personaKey,
     retrievalQueries: input.turnPlan.context.retrievalQueries,
@@ -794,7 +794,7 @@ export async function recallPersonaMemoriesForCue(
     cue: string;
     embed?: PersonaEmbedder;
     logger?: PersonaLogger;
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
   }
 ): Promise<string> {
@@ -803,7 +803,7 @@ export async function recallPersonaMemoriesForCue(
     return "Recall cue is empty; provide a short, specific cue.";
   }
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
   const context: PersonaContextGatewayOutput = {
@@ -827,7 +827,7 @@ export async function recallPersonaMemoriesForCue(
     context,
     embed: input.embed,
     logger: input.logger,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     persona,
   });
   if (selected.length === 0) {
@@ -927,7 +927,7 @@ type PersonaMemoryRetrievalInput = {
   logger?: PersonaLogger;
   mood?: PersonaAffectVector | null;
   moodEmotionLabels?: PersonaMoodEmotionLabel[] | null;
-  organizationId: string;
+  tenantId: string;
   persona: PersonaProfile;
 };
 
@@ -969,7 +969,7 @@ async function retrievePersonaMemoriesWithScores(
         )
         .where(
           and(
-            eq(personaEpisodeMemories.organizationId, input.organizationId),
+            eq(personaEpisodeMemories.tenantId, input.tenantId),
             eq(personaEpisodeMemories.personaId, input.persona.id),
             eq(personaEpisodeMemories.state, "active")
           )
@@ -991,7 +991,7 @@ async function retrievePersonaMemoriesWithScores(
         )
         .where(
           and(
-            eq(personaSemanticBeliefs.organizationId, input.organizationId),
+            eq(personaSemanticBeliefs.tenantId, input.tenantId),
             eq(personaSemanticBeliefs.personaId, input.persona.id),
             eq(personaSemanticBeliefs.state, "active")
           )
@@ -1018,7 +1018,7 @@ async function retrievePersonaMemoriesWithScores(
         )
         .where(
           and(
-            eq(personaFacts.organizationId, input.organizationId),
+            eq(personaFacts.tenantId, input.tenantId),
             eq(personaFacts.personaId, input.persona.id),
             eq(personaFacts.state, "active"),
             eq(personaSourceDocuments.state, "active")
@@ -1041,7 +1041,7 @@ async function retrievePersonaMemoriesWithScores(
         )
         .where(
           and(
-            eq(personaHabitPatterns.organizationId, input.organizationId),
+            eq(personaHabitPatterns.tenantId, input.tenantId),
             eq(personaHabitPatterns.personaId, input.persona.id),
             eq(personaHabitPatterns.state, "active")
           )
@@ -1063,7 +1063,7 @@ async function retrievePersonaMemoriesWithScores(
         )
         .where(
           and(
-            eq(personaStyleProfiles.organizationId, input.organizationId),
+            eq(personaStyleProfiles.tenantId, input.tenantId),
             eq(personaStyleProfiles.personaId, input.persona.id),
             eq(personaStyleProfiles.state, "active")
           )
@@ -1096,7 +1096,7 @@ async function retrievePersonaMemoriesWithScores(
         )
         .where(
           and(
-            eq(personaSourceChunks.organizationId, input.organizationId),
+            eq(personaSourceChunks.tenantId, input.tenantId),
             eq(personaSourceChunks.personaId, input.persona.id),
             eq(personaSourceDocuments.state, "active")
           )
@@ -1110,7 +1110,7 @@ async function retrievePersonaMemoriesWithScores(
     .from(personaEmotionalSalience)
     .where(
       and(
-        eq(personaEmotionalSalience.organizationId, input.organizationId),
+        eq(personaEmotionalSalience.tenantId, input.tenantId),
         eq(personaEmotionalSalience.personaId, input.persona.id)
       )
     );
@@ -1722,7 +1722,7 @@ export async function recordPostResponsePersonaMemoryReview(
     hindsight?: HindsightPersonaMemoryClient | null;
     logger?: PersonaLogger;
     llm?: PersonaJsonLlm;
-    organizationId: string;
+    tenantId: string;
     persona: PersonaProfile;
     turnPlan: PersonaTurnPlan;
     userId: string;
@@ -1757,7 +1757,7 @@ export async function recordPostResponsePersonaMemoryReview(
           source: triage.source,
           themes: triage.themes,
         },
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: input.persona.id,
         shouldConsolidate: true,
         state: "consolidation_candidate",
@@ -1777,7 +1777,7 @@ export async function recordPostResponsePersonaMemoryReview(
         hindsight: input.hindsight,
         logger: input.logger,
         localTargetId: memoryId,
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         persona: input.persona,
         themes: triage.themes,
         userId: input.userId,
@@ -2099,7 +2099,7 @@ function scheduleHindsightInteractionRetain(input: {
   hindsight?: HindsightPersonaMemoryClient | null;
   logger?: PersonaLogger;
   localTargetId: string;
-  organizationId: string;
+  tenantId: string;
   persona: PersonaProfile;
   themes: string[];
   userId: string;
@@ -2114,7 +2114,7 @@ function scheduleHindsightInteractionRetain(input: {
     localTargetId: input.localTargetId,
     localTargetKind: "interaction",
     metadata: { documentId: input.documentId },
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: input.persona.id,
     privacyLevel: "private",
     retainInput: {
@@ -2123,7 +2123,7 @@ function scheduleHindsightInteractionRetain(input: {
       content: input.content,
       context: "Persona-user interaction memory",
       documentId: input.documentId,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.persona.id,
       personaKey: input.persona.personaKey,
       privacyLevel: "private",
@@ -2154,7 +2154,7 @@ async function maybeRecordInteractionMemory(
     logger?: PersonaLogger;
     llm?: PersonaJsonLlm;
     message: string;
-    organizationId: string;
+    tenantId: string;
     persona: PersonaProfile;
     selected?: PersonaMemoryCandidate[];
     turnPlan: PersonaTurnPlan;
@@ -2193,7 +2193,7 @@ async function maybeRecordInteractionMemory(
       USER_PREFERENCE_PATTERNS.some((pattern) => pattern.test(input.message))
         ? input.message.slice(0, 280)
         : null,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: input.persona.id,
     shouldConsolidate: true,
     state: "consolidation_candidate",
@@ -2220,7 +2220,7 @@ async function maybeRecordInteractionMemory(
       hindsight: input.hindsight,
       logger: input.logger,
       localTargetId: inserted.id,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       persona: input.persona,
       themes: triage.themes,
       userId: input.userId,
@@ -2240,13 +2240,13 @@ export async function preparePersonaRuntimeContext(
     logger?: PersonaLogger;
     llm: PersonaJsonLlm;
     message: string;
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     userId: string;
   }
 ): Promise<PersonaRuntimeContext> {
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
   const disclosurePolicy = resolveDisclosurePolicy(input.disclosurePolicy);
@@ -2260,7 +2260,7 @@ export async function preparePersonaRuntimeContext(
   // Current-turn cues should color recall immediately: first decay the stored
   // mood, then apply only user-message/query cues before memory retrieval.
   const storedMood = await loadPersonaMoodState(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: persona.id,
     userId: input.userId,
   });
@@ -2288,7 +2288,7 @@ export async function preparePersonaRuntimeContext(
     logger,
     mood: immediateMood,
     moodEmotionLabels: immediateMoodUpdate.trace.emotionLabels,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     persona,
   });
   const selected = memorySelection.selected;
@@ -2296,7 +2296,7 @@ export async function preparePersonaRuntimeContext(
     client: input.hindsight,
     localSelected: selected,
     message: input.message,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     persona,
     turnPlan,
     userId: input.userId,
@@ -2314,7 +2314,7 @@ export async function preparePersonaRuntimeContext(
   try {
     await persistPersonaMoodState(db, {
       mood,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: persona.id,
       turnCount: (storedMood?.turnCount ?? 0) + 1,
       userId: input.userId,
@@ -2340,7 +2340,7 @@ export async function preparePersonaRuntimeContext(
     .values({
       chatMessageId: input.chatMessageId,
       chatSessionId: input.chatSessionId,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       payload: workspacePayload,
       personaId: persona.id,
       userId: input.userId,
@@ -2355,7 +2355,7 @@ export async function preparePersonaRuntimeContext(
     chatMessageId: input.chatMessageId,
     chatSessionId: input.chatSessionId,
     message: input.message,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     persona,
     defer: input.defer,
     hindsight: input.hindsight,

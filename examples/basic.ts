@@ -99,7 +99,7 @@ export async function runBasicPersonaExample(input: {
 }): Promise<string> {
   const sql = postgres(input.databaseUrl);
   const db = drizzle(sql, { schema: personaSchema }) as PersonaDatabase;
-  const organizationId = "org_example";
+  const tenantId = "tenant_example";
   const personaKey = "product-coach";
   const userId = "user_example";
   const embed = createOpenAiPersonaEmbedder(input.openAiApiKey);
@@ -115,7 +115,7 @@ export async function runBasicPersonaExample(input: {
     await upsertPersonaProfile(db, {
       consentStatus: "fictional_or_authorized",
       displayName: "Product Coach",
-      organizationId,
+      tenantId,
       personaKey,
       personaType: "synthetic_role",
       policy: {
@@ -134,7 +134,7 @@ export async function runBasicPersonaExample(input: {
 
     await ingestPersonaSourceDocument(db, {
       embed,
-      organizationId,
+      tenantId,
       personaKey,
       rawText:
         "The Product Coach prefers writing down the user problem, the bet, and the fastest falsifying signal before committing engineering time.",
@@ -153,7 +153,7 @@ export async function runBasicPersonaExample(input: {
       },
       embed,
       memoryKind: "habit",
-      organizationId,
+      tenantId,
       personaKey,
       summary:
         "When reviewing product ideas, the persona asks for the riskiest assumption and the smallest credible test.",
@@ -168,7 +168,7 @@ export async function runBasicPersonaExample(input: {
       embed,
       llm,
       message: userMessage,
-      organizationId,
+      tenantId,
       personaKey,
       userId,
     });
@@ -189,7 +189,7 @@ export async function runBasicPersonaExample(input: {
     await recordPostResponsePersonaMemoryReview(db, {
       assistantMessage: answer,
       llm,
-      organizationId,
+      tenantId,
       persona: runtime.persona,
       turnPlan: runtime.turnPlan,
       userId,

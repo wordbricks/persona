@@ -56,7 +56,7 @@ function normalizePersonaAliasKey(value: string): string {
 
 export async function loadPersonaProfile(
   db: Database,
-  input: { organizationId: string; personaKey: string }
+  input: { tenantId: string; personaKey: string }
 ): Promise<PersonaProfile> {
   const personaKey = normalizePersonaKey(input.personaKey);
   const [existing] = await db
@@ -64,7 +64,7 @@ export async function loadPersonaProfile(
     .from(personaProfiles)
     .where(
       and(
-        eq(personaProfiles.organizationId, input.organizationId),
+        eq(personaProfiles.tenantId, input.tenantId),
         eq(personaProfiles.personaKey, personaKey),
         eq(personaProfiles.state, "active")
       )
@@ -75,7 +75,7 @@ export async function loadPersonaProfile(
   }
 
   throw new Error(
-    `Persona ${personaKey} is not configured for this organization.`
+    `Persona ${personaKey} is not configured for this tenant.`
   );
 }
 
@@ -84,7 +84,7 @@ export async function upsertPersonaProfile(
   input: {
     consentStatus?: PersonaProfile["consentStatus"];
     displayName?: string | null;
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     personaType?: PersonaProfile["personaType"];
     personaVersion?: string | null;
@@ -96,7 +96,7 @@ export async function upsertPersonaProfile(
 ): Promise<PersonaProfile> {
   const personaKey = normalizePersonaKey(input.personaKey);
   const existing = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey,
   }).catch(() => null);
   const displayName =
@@ -131,7 +131,7 @@ export async function upsertPersonaProfile(
       existing?.consentStatus ??
       "fictional_or_authorized",
     displayName,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey,
     personaType: input.personaType ?? existing?.personaType ?? "synthetic_role",
     personaVersion:
@@ -149,11 +149,11 @@ export async function upsertPersonaProfile(
     .values(values)
     .onConflictDoUpdate({
       set: values,
-      target: [personaProfiles.organizationId, personaProfiles.personaKey],
-      // idx_persona_profiles_org_key is a partial unique index (public
-      // persona templates use a null organization id); ON CONFLICT must carry
+      target: [personaProfiles.tenantId, personaProfiles.personaKey],
+      // idx_persona_profiles_tenant_key is a partial unique index (public
+      // persona templates use a null tenant id); ON CONFLICT must carry
       // the index predicate or Postgres cannot match the index and errors.
-      targetWhere: sql`organization_id is not null`,
+      targetWhere: sql`tenant_id is not null`,
     })
     .returning();
   if (!saved) {
@@ -166,7 +166,7 @@ export async function upsertPersonaAlias(
   db: Database,
   input: {
     aliasKey: string;
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     state?: PersonaAlias["state"];
     surface?: PersonaAliasSurface;
@@ -177,12 +177,12 @@ export async function upsertPersonaAlias(
   const surface = input.surface ?? "slack";
   const state = input.state ?? "active";
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
 
   const directPersona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: aliasKey,
   }).catch(() => null);
   if (directPersona && directPersona.id !== persona.id) {
@@ -203,7 +203,7 @@ export async function upsertPersonaAlias(
     )
     .where(
       and(
-        eq(personaAliases.organizationId, input.organizationId),
+        eq(personaAliases.tenantId, input.tenantId),
         eq(personaAliases.surface, surface),
         eq(personaAliases.aliasKey, aliasKey),
         ne(personaAliases.state, "deleted")
@@ -220,7 +220,7 @@ export async function upsertPersonaAlias(
 
   const values = {
     aliasKey,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: persona.id,
     state,
     surface,
@@ -237,7 +237,7 @@ export async function upsertPersonaAlias(
     .onConflictDoUpdate({
       set: values,
       target: [
-        personaAliases.organizationId,
+        personaAliases.tenantId,
         personaAliases.surface,
         personaAliases.aliasKey,
       ],
@@ -253,7 +253,7 @@ export async function upsertPersonaAlias(
 export async function listPersonaAliases(
   db: Database,
   input: {
-    organizationId: string;
+    tenantId: string;
     personaKey?: string | null;
     surface?: PersonaAliasSurface;
   }
@@ -273,7 +273,7 @@ export async function listPersonaAliases(
     )
     .where(
       and(
-        eq(personaAliases.organizationId, input.organizationId),
+        eq(personaAliases.tenantId, input.tenantId),
         input.surface ? eq(personaAliases.surface, input.surface) : undefined,
         personaKey ? eq(personaProfiles.personaKey, personaKey) : undefined
       )
@@ -287,7 +287,7 @@ export async function forgetPersonaLayerMemory(
   db: Database,
   input: {
     memoryId: string;
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     sourceTitle?: string | null;
   }
@@ -302,14 +302,14 @@ export async function forgetPersonaLayerMemory(
   forgottenSourceDocuments: number;
 }> {
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
 
   return db.transaction(async (tx) => {
     const memory = await findPersonaLayerMemory(tx, {
       memoryId: input.memoryId,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: persona.id,
     });
     if (!memory) {
@@ -321,7 +321,7 @@ export async function forgetPersonaLayerMemory(
     const sourceDocumentIds = await findSyntheticSourceDocumentIdsForMemory(
       tx,
       {
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         persona,
         sourceDocumentIds: memory.sourceDocumentIds,
         title: input.sourceTitle ?? memory.title,
@@ -335,7 +335,7 @@ export async function forgetPersonaLayerMemory(
               .from(personaSourceChunks)
               .where(
                 and(
-                  eq(personaSourceChunks.organizationId, input.organizationId),
+                  eq(personaSourceChunks.tenantId, input.tenantId),
                   eq(personaSourceChunks.personaId, persona.id),
                   inArray(
                     personaSourceChunks.sourceDocumentId,
@@ -387,7 +387,7 @@ export async function forgetPersonaLayerMemory(
         .set({ state: "deleted", updatedAt: new Date() })
         .where(
           and(
-            eq(personaExternalMemoryRefs.organizationId, input.organizationId),
+            eq(personaExternalMemoryRefs.tenantId, input.tenantId),
             eq(personaExternalMemoryRefs.personaId, persona.id),
             inArray(
               personaExternalMemoryRefs.localTargetId,
@@ -417,7 +417,7 @@ async function findPersonaLayerMemory(
   db: Database,
   input: {
     memoryId: string;
-    organizationId: string;
+    tenantId: string;
     personaId: string;
   }
 ): Promise<PersonaLayerMemoryForgetTarget | null> {
@@ -431,7 +431,7 @@ async function findPersonaLayerMemory(
     .where(
       and(
         eq(personaEpisodeMemories.id, input.memoryId),
-        eq(personaEpisodeMemories.organizationId, input.organizationId),
+        eq(personaEpisodeMemories.tenantId, input.tenantId),
         eq(personaEpisodeMemories.personaId, input.personaId)
       )
     )
@@ -457,14 +457,14 @@ async function findPersonaLayerMemory(
     .where(
       and(
         eq(personaSemanticBeliefs.id, input.memoryId),
-        eq(personaSemanticBeliefs.organizationId, input.organizationId),
+        eq(personaSemanticBeliefs.tenantId, input.tenantId),
         eq(personaSemanticBeliefs.personaId, input.personaId)
       )
     )
     .limit(1);
   if (belief) {
     const title = await findFirstSourceDocumentTitle(db, {
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.personaId,
       sourceDocumentIds: belief.supportingSourceIds,
     });
@@ -487,7 +487,7 @@ async function findPersonaLayerMemory(
     .where(
       and(
         eq(personaFacts.id, input.memoryId),
-        eq(personaFacts.organizationId, input.organizationId),
+        eq(personaFacts.tenantId, input.tenantId),
         eq(personaFacts.personaId, input.personaId)
       )
     )
@@ -517,7 +517,7 @@ async function findPersonaLayerMemory(
     .where(
       and(
         eq(personaHabitPatterns.id, input.memoryId),
-        eq(personaHabitPatterns.organizationId, input.organizationId),
+        eq(personaHabitPatterns.tenantId, input.tenantId),
         eq(personaHabitPatterns.personaId, input.personaId)
       )
     )
@@ -539,7 +539,7 @@ async function findPersonaLayerMemory(
     .where(
       and(
         eq(personaStyleProfiles.id, input.memoryId),
-        eq(personaStyleProfiles.organizationId, input.organizationId),
+        eq(personaStyleProfiles.tenantId, input.tenantId),
         eq(personaStyleProfiles.personaId, input.personaId)
       )
     )
@@ -559,7 +559,7 @@ async function findPersonaLayerMemory(
 async function findFirstSourceDocumentTitle(
   db: Database,
   input: {
-    organizationId: string;
+    tenantId: string;
     personaId: string;
     sourceDocumentIds: string[];
   }
@@ -572,7 +572,7 @@ async function findFirstSourceDocumentTitle(
     .from(personaSourceDocuments)
     .where(
       and(
-        eq(personaSourceDocuments.organizationId, input.organizationId),
+        eq(personaSourceDocuments.tenantId, input.tenantId),
         eq(personaSourceDocuments.personaId, input.personaId),
         inArray(personaSourceDocuments.id, input.sourceDocumentIds)
       )
@@ -584,7 +584,7 @@ async function findFirstSourceDocumentTitle(
 async function findSyntheticSourceDocumentIdsForMemory(
   db: Database,
   input: {
-    organizationId: string;
+    tenantId: string;
     persona: PersonaProfile;
     sourceDocumentIds: string[];
     title: string;
@@ -610,7 +610,7 @@ async function findSyntheticSourceDocumentIdsForMemory(
     .from(personaSourceDocuments)
     .where(
       and(
-        eq(personaSourceDocuments.organizationId, input.organizationId),
+        eq(personaSourceDocuments.tenantId, input.tenantId),
         eq(personaSourceDocuments.personaId, input.persona.id),
         eq(personaSourceDocuments.sourceType, "seed"),
         eq(personaSourceDocuments.sourcePriority, "synthetic"),
@@ -700,7 +700,7 @@ export async function copyPersonaProfile(
   db: Database,
   input: {
     sourcePersonaKey: string;
-    targetOrganizationId: string;
+    targetTenantId: string;
     targetPersonaKey?: string | null;
     updatedByUserId?: string | null;
   }
@@ -724,19 +724,19 @@ export async function copyPersonaProfile(
   return db.transaction(async (tx) => {
     const sourcePersona = await loadPublicPersonaProfile(tx, sourcePersonaKey);
     const existingTarget = await loadPersonaProfile(tx, {
-      organizationId: input.targetOrganizationId,
+      tenantId: input.targetTenantId,
       personaKey: targetPersonaKey,
     }).catch(() => null);
     if (existingTarget) {
       throw new Error(
-        `Persona ${targetPersonaKey} is already configured for the target organization.`
+        `Persona ${targetPersonaKey} is already configured for the target tenant.`
       );
     }
 
     const cloned = await clonePersonaIntoScope(tx, {
-      personaScope: "organization",
+      personaScope: "tenant",
       sourcePersona,
-      targetOrganizationId: input.targetOrganizationId,
+      targetTenantId: input.targetTenantId,
       targetPersonaKey,
       updatedByUserId: input.updatedByUserId ?? null,
     });
@@ -744,13 +744,13 @@ export async function copyPersonaProfile(
   });
 }
 
-// Publishes an organization persona as a global public template (null
-// organization id, persona_scope "public") so other orgs can browse and copy
+// Publishes a tenant persona as a global public template (null
+// tenant id, persona_scope "public") so other tenants can browse and copy
 // it. The inverse of copyPersonaProfile.
 export async function publishPersonaProfile(
   db: Database,
   input: {
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     publicPersonaKey?: string | null;
     updatedByUserId?: string | null;
@@ -774,7 +774,7 @@ export async function publishPersonaProfile(
 
   return db.transaction(async (tx) => {
     const sourcePersona = await loadPersonaProfile(tx, {
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaKey,
     });
     const existingPublic = await loadPublicPersonaProfile(
@@ -791,7 +791,7 @@ export async function publishPersonaProfile(
       const cloned = await clonePersonaIntoScope(tx, {
         personaScope: "public",
         sourcePersona,
-        targetOrganizationId: null,
+        targetTenantId: null,
         targetPersona: refreshedPersona,
         targetPersonaKey: publicPersonaKey,
         updatedByUserId: input.updatedByUserId ?? null,
@@ -806,7 +806,7 @@ export async function publishPersonaProfile(
     const cloned = await clonePersonaIntoScope(tx, {
       personaScope: "public",
       sourcePersona,
-      targetOrganizationId: null,
+      targetTenantId: null,
       targetPersonaKey: publicPersonaKey,
       updatedByUserId: input.updatedByUserId ?? null,
     });
@@ -889,13 +889,13 @@ async function clearPersonaMemoryLayers(
 
 // Shared deep clone of a persona profile and all memory layers into a new
 // scope, remapping cross-references. Used by copyPersonaProfile (public
-// template -> org) and publishPersonaProfile (org -> public template).
+// template -> tenant) and publishPersonaProfile (tenant -> public template).
 async function clonePersonaIntoScope(
   tx: Database,
   input: {
     personaScope: PersonaScope;
     sourcePersona: PersonaProfile;
-    targetOrganizationId: string | null;
+    targetTenantId: string | null;
     targetPersona?: PersonaProfile;
     targetPersonaKey: string;
     updatedByUserId: string | null;
@@ -912,7 +912,7 @@ async function clonePersonaIntoScope(
   persona: PersonaProfile;
 }> {
   const sourcePersona = input.sourcePersona;
-  const sourceOrganizationId = sourcePersona.organizationId;
+  const sourceTenantId = sourcePersona.tenantId;
 
   const copiedPersona =
     input.targetPersona ??
@@ -922,7 +922,7 @@ async function clonePersonaIntoScope(
         .values({
           consentStatus: sourcePersona.consentStatus,
           displayName: sourcePersona.displayName,
-          organizationId: input.targetOrganizationId,
+          tenantId: input.targetTenantId,
           personaKey: input.targetPersonaKey,
           personaScope: input.personaScope,
           personaType: sourcePersona.personaType,
@@ -945,9 +945,9 @@ async function clonePersonaIntoScope(
     .from(personaSourceDocuments)
     .where(
       and(
-        sourceOrganizationId === null
-          ? isNull(personaSourceDocuments.organizationId)
-          : eq(personaSourceDocuments.organizationId, sourceOrganizationId),
+        sourceTenantId === null
+          ? isNull(personaSourceDocuments.tenantId)
+          : eq(personaSourceDocuments.tenantId, sourceTenantId),
         eq(personaSourceDocuments.personaId, sourcePersona.id)
       )
     )
@@ -965,7 +965,7 @@ async function clonePersonaIntoScope(
         createdAt: sourceDocument.createdAt,
         ingestedAt: sourceDocument.ingestedAt,
         metadata: sourceDocument.metadata,
-        organizationId: input.targetOrganizationId,
+        tenantId: input.targetTenantId,
         personaId: copiedPersona.id,
         privacyLevel: sourceDocument.privacyLevel,
         publicationDate: sourceDocument.publicationDate,
@@ -999,7 +999,7 @@ async function clonePersonaIntoScope(
               emotions: chunk.emotions,
               endChar: chunk.endChar,
               entities: chunk.entities,
-              organizationId: input.targetOrganizationId,
+              tenantId: input.targetTenantId,
               personaId: copiedPersona.id,
               sourceDocumentId: copiedDocument.id,
               startChar: chunk.startChar,
@@ -1018,9 +1018,9 @@ async function clonePersonaIntoScope(
     .from(personaEpisodeMemories)
     .where(
       and(
-        sourceOrganizationId === null
-          ? isNull(personaEpisodeMemories.organizationId)
-          : eq(personaEpisodeMemories.organizationId, sourceOrganizationId),
+        sourceTenantId === null
+          ? isNull(personaEpisodeMemories.tenantId)
+          : eq(personaEpisodeMemories.tenantId, sourceTenantId),
         eq(personaEpisodeMemories.personaId, sourcePersona.id)
       )
     )
@@ -1035,7 +1035,7 @@ async function clonePersonaIntoScope(
         eventSummary: episode.eventSummary,
         firstPersonRecollection: episode.firstPersonRecollection,
         location: episode.location,
-        organizationId: input.targetOrganizationId,
+        tenantId: input.targetTenantId,
         people: episode.people,
         personaId: copiedPersona.id,
         privacyLevel: episode.privacyLevel,
@@ -1062,9 +1062,9 @@ async function clonePersonaIntoScope(
 
   await copyEmotionalSalience(tx, {
     episodeIdMap,
-    sourceOrganizationId,
+    sourceTenantId,
     sourcePersonaId: sourcePersona.id,
-    targetOrganizationId: input.targetOrganizationId,
+    targetTenantId: input.targetTenantId,
     targetPersonaId: copiedPersona.id,
   });
 
@@ -1073,9 +1073,9 @@ async function clonePersonaIntoScope(
     .from(personaSemanticBeliefs)
     .where(
       and(
-        sourceOrganizationId === null
-          ? isNull(personaSemanticBeliefs.organizationId)
-          : eq(personaSemanticBeliefs.organizationId, sourceOrganizationId),
+        sourceTenantId === null
+          ? isNull(personaSemanticBeliefs.tenantId)
+          : eq(personaSemanticBeliefs.tenantId, sourceTenantId),
         eq(personaSemanticBeliefs.personaId, sourcePersona.id)
       )
     )
@@ -1095,7 +1095,7 @@ async function clonePersonaIntoScope(
             domain: belief.domain,
             exceptions: belief.exceptions,
             firstPersonForm: belief.firstPersonForm,
-            organizationId: input.targetOrganizationId,
+            tenantId: input.targetTenantId,
             personaId: copiedPersona.id,
             privacyLevel: belief.privacyLevel,
             proposition: belief.proposition,
@@ -1122,9 +1122,9 @@ async function clonePersonaIntoScope(
     .from(personaHabitPatterns)
     .where(
       and(
-        sourceOrganizationId === null
-          ? isNull(personaHabitPatterns.organizationId)
-          : eq(personaHabitPatterns.organizationId, sourceOrganizationId),
+        sourceTenantId === null
+          ? isNull(personaHabitPatterns.tenantId)
+          : eq(personaHabitPatterns.tenantId, sourceTenantId),
         eq(personaHabitPatterns.personaId, sourcePersona.id)
       )
     )
@@ -1138,7 +1138,7 @@ async function clonePersonaIntoScope(
             confidence: habit.confidence,
             createdAt: habit.createdAt,
             defaultResponsePattern: habit.defaultResponsePattern,
-            organizationId: input.targetOrganizationId,
+            tenantId: input.targetTenantId,
             personaId: copiedPersona.id,
             rhetoricalMoves: habit.rhetoricalMoves,
             state: habit.state,
@@ -1160,9 +1160,9 @@ async function clonePersonaIntoScope(
     .from(personaStyleProfiles)
     .where(
       and(
-        sourceOrganizationId === null
-          ? isNull(personaStyleProfiles.organizationId)
-          : eq(personaStyleProfiles.organizationId, sourceOrganizationId),
+        sourceTenantId === null
+          ? isNull(personaStyleProfiles.tenantId)
+          : eq(personaStyleProfiles.tenantId, sourceTenantId),
         eq(personaStyleProfiles.personaId, sourcePersona.id)
       )
     )
@@ -1176,7 +1176,7 @@ async function clonePersonaIntoScope(
             commonPhrases: style.commonPhrases,
             createdAt: style.createdAt,
             lexicalPreferences: style.lexicalPreferences,
-            organizationId: input.targetOrganizationId,
+            tenantId: input.targetTenantId,
             personaId: copiedPersona.id,
             preferredRhetoricalMoves: style.preferredRhetoricalMoves,
             register: style.register,
@@ -1243,8 +1243,8 @@ async function loadPublicPersonaProfile(
 }
 
 function publicPersonaScopeCondition() {
-  // Comment: Production public persona templates are represented by a null organization scope.
-  return isNull(personaProfiles.organizationId);
+  // Comment: Production public persona templates are represented by a null tenant scope.
+  return isNull(personaProfiles.tenantId);
 }
 
 function remapIds(values: string[], idMap: Map<string, string>): string[] {
@@ -1255,9 +1255,9 @@ async function copyEmotionalSalience(
   db: Database,
   input: {
     episodeIdMap: Map<string, string>;
-    sourceOrganizationId: string | null;
+    sourceTenantId: string | null;
     sourcePersonaId: string;
-    targetOrganizationId: string | null;
+    targetTenantId: string | null;
     targetPersonaId: string;
   }
 ): Promise<void> {
@@ -1270,11 +1270,11 @@ async function copyEmotionalSalience(
     .from(personaEmotionalSalience)
     .where(
       and(
-        input.sourceOrganizationId === null
-          ? isNull(personaEmotionalSalience.organizationId)
+        input.sourceTenantId === null
+          ? isNull(personaEmotionalSalience.tenantId)
           : eq(
-              personaEmotionalSalience.organizationId,
-              input.sourceOrganizationId
+              personaEmotionalSalience.tenantId,
+              input.sourceTenantId
             ),
         eq(personaEmotionalSalience.personaId, input.sourcePersonaId)
       )
@@ -1294,7 +1294,7 @@ async function copyEmotionalSalience(
         emotions: salience.emotions,
         episodeMemoryId,
         notes: salience.notes,
-        organizationId: input.targetOrganizationId,
+        tenantId: input.targetTenantId,
         personaId: input.targetPersonaId,
         retrievalBoost: salience.retrievalBoost,
         salienceScore: salience.salienceScore,

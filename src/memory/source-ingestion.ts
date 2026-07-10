@@ -237,7 +237,7 @@ async function upsertHindsightRetainReference(
     localTargetId: string;
     localTargetKind: PersonaExternalMemoryLocalTargetKind;
     metadata?: Record<string, unknown>;
-    organizationId: string;
+    tenantId: string;
     personaId: string;
     privacyLevel: PersonaPrivacyLevel;
     result: HindsightRetainResult;
@@ -249,7 +249,7 @@ async function upsertHindsightRetainReference(
     input.result.bankId ??
     (input.result.attempted
       ? hindsightPersonaBankId({
-          organizationId: input.organizationId,
+          tenantId: input.tenantId,
           personaId: input.personaId,
           scope: input.retainInput.scope,
           userId: input.retainInput.userId,
@@ -284,7 +284,7 @@ async function upsertHindsightRetainReference(
       localTargetId: input.localTargetId,
       localTargetKind: input.localTargetKind,
       metadata,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.personaId,
       privacyLevel: input.privacyLevel,
       provider: "hindsight",
@@ -321,7 +321,7 @@ export function scheduleHindsightRetain(input: {
   localTargetId: string;
   localTargetKind: PersonaExternalMemoryLocalTargetKind;
   metadata?: Record<string, unknown>;
-  organizationId: string;
+  tenantId: string;
   personaId: string;
   privacyLevel: PersonaPrivacyLevel;
   retainInput: HindsightRetainInput;
@@ -341,7 +341,7 @@ export function scheduleHindsightRetain(input: {
         localTargetId: input.localTargetId,
         localTargetKind: input.localTargetKind,
         metadata: input.metadata,
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: input.personaId,
         privacyLevel: input.privacyLevel,
         result,
@@ -357,7 +357,7 @@ function scheduleHindsightSourceDocumentRetain(input: {
   defer?: (promise: Promise<unknown>) => void;
   hindsight?: HindsightPersonaMemoryClient | null;
   logger?: PersonaLogger;
-  organizationId: string;
+  tenantId: string;
   persona: PersonaProfile;
   rawText: string;
   sourceDocument: PersonaSourceDocument;
@@ -380,14 +380,14 @@ function scheduleHindsightSourceDocumentRetain(input: {
       sourcePriority: input.sourceDocument.sourcePriority,
       sourceType: input.sourceDocument.sourceType,
     },
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: input.persona.id,
     privacyLevel: input.sourceDocument.privacyLevel,
     retainInput: {
       content: input.rawText.slice(0, MAX_HINDSIGHT_RETAIN_CONTENT_CHARS),
       context: `Persona source document: ${input.sourceDocument.title}`,
       documentId: `persona_source_document_${input.sourceDocument.id}`,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.persona.id,
       personaKey: input.persona.personaKey,
       privacyLevel: input.sourceDocument.privacyLevel,
@@ -419,7 +419,7 @@ export async function ingestPersonaSourceDocument(
     hindsight?: HindsightPersonaMemoryClient | null;
     logger?: PersonaLogger;
     metadata?: Record<string, unknown>;
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     privacyLevel?: PersonaPrivacyLevel | null;
     publicationDate?: string | null;
@@ -433,7 +433,7 @@ export async function ingestPersonaSourceDocument(
   }
 ): Promise<PersonaSourceIngestionResult> {
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
   const rawText = input.rawText.trim();
@@ -454,7 +454,7 @@ export async function ingestPersonaSourceDocument(
       medium: "text",
       ...(input.metadata ?? {}),
     },
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: persona.id,
     privacyLevel: input.privacyLevel ?? "internal",
     publicationDate: input.publicationDate?.trim() || null,
@@ -473,7 +473,7 @@ export async function ingestPersonaSourceDocument(
     .onConflictDoUpdate({
       set: values,
       target: [
-        personaSourceDocuments.organizationId,
+        personaSourceDocuments.tenantId,
         personaSourceDocuments.personaId,
         personaSourceDocuments.contentHash,
       ],
@@ -492,7 +492,7 @@ export async function ingestPersonaSourceDocument(
     await tryUpsertPersonaMemoryEmbeddings(db, {
       embed: input.embed,
       entries: existingChunks.map((chunk) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: chunk.id,
         targetKind: "source_chunk" as const,
@@ -513,7 +513,7 @@ export async function ingestPersonaSourceDocument(
         (chunk) =>
           ({
             endChar: chunk.endChar,
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             personaId: persona.id,
             sourceDocumentId: sourceDocument.id,
             startChar: chunk.startChar,
@@ -526,7 +526,7 @@ export async function ingestPersonaSourceDocument(
   await tryUpsertPersonaMemoryEmbeddings(db, {
     embed: input.embed,
     entries: insertedChunks.map((chunk) => ({
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: persona.id,
       targetId: chunk.id,
       targetKind: "source_chunk" as const,
@@ -539,7 +539,7 @@ export async function ingestPersonaSourceDocument(
     defer: input.defer,
     hindsight: input.hindsight,
     logger: input.logger,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     persona,
     rawText,
     sourceDocument,
@@ -710,13 +710,13 @@ export async function draftPersonaMemoriesFromSourceDocument(
     draft: PersonaSourceDraftMemoryInput;
     embed?: PersonaEmbedder;
     logger?: PersonaLogger;
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     sourceDocumentId: string;
   }
 ): Promise<PersonaSourceDraftMemoryResult> {
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
   const [sourceDocument] = await db
@@ -724,7 +724,7 @@ export async function draftPersonaMemoriesFromSourceDocument(
     .from(personaSourceDocuments)
     .where(
       and(
-        eq(personaSourceDocuments.organizationId, input.organizationId),
+        eq(personaSourceDocuments.tenantId, input.tenantId),
         eq(personaSourceDocuments.personaId, persona.id),
         eq(personaSourceDocuments.id, input.sourceDocumentId),
         eq(personaSourceDocuments.state, "active")
@@ -789,7 +789,7 @@ export async function draftPersonaMemoriesFromSourceDocument(
                   eventSummary: episode.eventSummary,
                   firstPersonRecollection:
                     episode.firstPersonRecollection ?? null,
-                  organizationId: input.organizationId,
+                  tenantId: input.tenantId,
                   personaId: persona.id,
                   privacyLevel: episode.privacyLevel ?? privacyLevel,
                   sourceRefs: sourceRefsForDraft({
@@ -819,7 +819,7 @@ export async function draftPersonaMemoriesFromSourceDocument(
                   domain: belief.domain,
                   exceptions: belief.exceptions ?? [],
                   firstPersonForm: belief.firstPersonForm ?? null,
-                  organizationId: input.organizationId,
+                  tenantId: input.tenantId,
                   personaId: persona.id,
                   privacyLevel: belief.privacyLevel ?? privacyLevel,
                   proposition: belief.proposition,
@@ -854,7 +854,7 @@ export async function draftPersonaMemoriesFromSourceDocument(
                   normalizePersonaFactObjectKey(objectName),
                 objectName,
                 objectType: fact.objectType ?? "text",
-                organizationId: input.organizationId,
+                tenantId: input.tenantId,
                 personaId: persona.id,
                 privacyLevel: fact.privacyLevel ?? privacyLevel,
                 sourceChunkId,
@@ -880,7 +880,7 @@ export async function draftPersonaMemoriesFromSourceDocument(
                   avoidPatterns: habit.avoidPatterns ?? [],
                   confidence: clampScore(habit.confidence),
                   defaultResponsePattern: habit.defaultResponsePattern,
-                  organizationId: input.organizationId,
+                  tenantId: input.tenantId,
                   personaId: persona.id,
                   rhetoricalMoves: habit.rhetoricalMoves ?? [],
                   state: "draft",
@@ -906,7 +906,7 @@ export async function draftPersonaMemoriesFromSourceDocument(
                   avoidPhrases: style.avoidPhrases ?? [],
                   commonPhrases: style.commonPhrases ?? [],
                   lexicalPreferences: style.lexicalPreferences ?? {},
-                  organizationId: input.organizationId,
+                  tenantId: input.tenantId,
                   personaId: persona.id,
                   preferredRhetoricalMoves:
                     style.preferredRhetoricalMoves ?? [],
@@ -925,35 +925,35 @@ export async function draftPersonaMemoriesFromSourceDocument(
     embed: input.embed,
     entries: [
       ...episodes.map((episode) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: episode.id,
         targetKind: "episode" as const,
         text: episodeMemoryText(episode),
       })),
       ...beliefs.map((belief) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: belief.id,
         targetKind: "belief" as const,
         text: beliefMemoryText(belief),
       })),
       ...facts.map((fact) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: fact.id,
         targetKind: "fact" as const,
         text: factMemoryText(fact),
       })),
       ...habits.map((habit) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: habit.id,
         targetKind: "habit" as const,
         text: habitMemoryText(habit),
       })),
       ...styleProfiles.map((style) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: style.id,
         targetKind: "style" as const,
@@ -1005,12 +1005,12 @@ export async function activatePersonaDraftMemory(
   input: {
     memoryId: string;
     memoryKind: "episode" | "fact" | "belief" | "habit" | "style";
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
   }
 ): Promise<PersonaDraftMemorySummary | null> {
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
   const values = { state: "active" as const, updatedAt: new Date() };
@@ -1021,7 +1021,7 @@ export async function activatePersonaDraftMemory(
       .set(values)
       .where(
         and(
-          eq(personaEpisodeMemories.organizationId, input.organizationId),
+          eq(personaEpisodeMemories.tenantId, input.tenantId),
           eq(personaEpisodeMemories.personaId, persona.id),
           eq(personaEpisodeMemories.id, input.memoryId),
           eq(personaEpisodeMemories.state, "draft")
@@ -1044,7 +1044,7 @@ export async function activatePersonaDraftMemory(
       .set(values)
       .where(
         and(
-          eq(personaSemanticBeliefs.organizationId, input.organizationId),
+          eq(personaSemanticBeliefs.tenantId, input.tenantId),
           eq(personaSemanticBeliefs.personaId, persona.id),
           eq(personaSemanticBeliefs.id, input.memoryId),
           eq(personaSemanticBeliefs.state, "draft")
@@ -1067,7 +1067,7 @@ export async function activatePersonaDraftMemory(
       .set(values)
       .where(
         and(
-          eq(personaFacts.organizationId, input.organizationId),
+          eq(personaFacts.tenantId, input.tenantId),
           eq(personaFacts.personaId, persona.id),
           eq(personaFacts.id, input.memoryId),
           eq(personaFacts.state, "draft")
@@ -1090,7 +1090,7 @@ export async function activatePersonaDraftMemory(
       .set(values)
       .where(
         and(
-          eq(personaHabitPatterns.organizationId, input.organizationId),
+          eq(personaHabitPatterns.tenantId, input.tenantId),
           eq(personaHabitPatterns.personaId, persona.id),
           eq(personaHabitPatterns.id, input.memoryId),
           eq(personaHabitPatterns.state, "draft")
@@ -1112,7 +1112,7 @@ export async function activatePersonaDraftMemory(
     .set(values)
     .where(
       and(
-        eq(personaStyleProfiles.organizationId, input.organizationId),
+        eq(personaStyleProfiles.tenantId, input.tenantId),
         eq(personaStyleProfiles.personaId, persona.id),
         eq(personaStyleProfiles.id, input.memoryId),
         eq(personaStyleProfiles.state, "draft")
@@ -1135,7 +1135,7 @@ export async function createPersonaSourceDocument(
     authorUserId?: string | null;
     embed?: PersonaEmbedder;
     logger?: PersonaLogger;
-    organizationId: string;
+    tenantId: string;
     persona: PersonaProfile;
     privacyLevel: PersonaPrivacyLevel;
     rawText: string;
@@ -1148,7 +1148,7 @@ export async function createPersonaSourceDocument(
     consentStatus: input.persona.consentStatus,
     contentHash: `manual:${ulid()}`,
     metadata: { medium: "text" },
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: input.persona.id,
     privacyLevel: input.privacyLevel,
     reliability: 0.85,
@@ -1169,7 +1169,7 @@ export async function createPersonaSourceDocument(
     .insert(personaSourceChunks)
     .values({
       endChar: input.rawText.length,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.persona.id,
       sourceDocumentId: source.id,
       startChar: 0,
@@ -1181,7 +1181,7 @@ export async function createPersonaSourceDocument(
       embed: input.embed,
       entries: [
         {
-          organizationId: input.organizationId,
+          tenantId: input.tenantId,
           personaId: input.persona.id,
           targetId: chunk.id,
           targetKind: "source_chunk",

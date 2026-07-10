@@ -8,9 +8,9 @@ const profile: PersonaProfile = {
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   displayName: "Juno",
   id: "persona_1",
-  organizationId: "org_1",
+  tenantId: "tenant_1",
   personaKey: "juno",
-  personaScope: "organization",
+  personaScope: "tenant",
   personaType: "simulated_character",
   personaVersion: "v1",
   policy: {
@@ -76,7 +76,7 @@ describe("upsertPersonaAlias", () => {
     await expect(
       upsertPersonaAlias(db as never, {
         aliasKey: "coach",
-        organizationId: "org_1",
+        tenantId: "tenant_1",
         personaKey: "juno",
         surface: "slack",
       })

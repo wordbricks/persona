@@ -444,13 +444,13 @@ export type PersonaMemoryRetrievalPayload = {
   version: 1;
 };
 
-export const PERSONA_SCOPES = ["organization", "public"] as const;
+export const PERSONA_SCOPES = ["tenant", "public"] as const;
 
 export type PersonaScope = (typeof PERSONA_SCOPES)[number];
 
 // Public persona templates (persona_scope = "public") live with a null
-// organization id and are copied into orgs on demand; organization-scoped
-// rows always carry an organization id.
+// tenant id and are copied into tenants on demand; tenant-scoped
+// rows always carry a tenant id.
 export const personaProfiles = pgTable(
   "persona_profiles",
   {
@@ -462,12 +462,12 @@ export const personaProfiles = pgTable(
       .defaultNow(),
     displayName: text("display_name").notNull(),
     id: text("id").primaryKey().$defaultFn(ulid),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaKey: text("persona_key").notNull(),
     personaScope: text("persona_scope")
       .notNull()
       .$type<PersonaScope>()
-      .default("organization"),
+      .default("tenant"),
     personaType: text("persona_type").notNull().$type<PersonaProfileType>(),
     personaVersion: text("persona_version").notNull().default("v1"),
     policy: jsonb("policy").$type<PersonaProfilePolicy>().notNull(),
@@ -484,18 +484,18 @@ export const personaProfiles = pgTable(
     updatedByUserId: text("updated_by_user_id"),
   },
   (table) => [
-    // Partial: public persona templates have a null organization id; org
-    // uniqueness only applies to org-scoped rows. Writers using ON CONFLICT
+    // Partial: public persona templates have a null tenant id; tenant
+    // uniqueness only applies to tenant-scoped rows. Writers using ON CONFLICT
     // against this index must pass the same predicate via targetWhere or
     // Postgres cannot match the index.
-    uniqueIndex("idx_persona_profiles_org_key")
-      .on(table.organizationId, table.personaKey)
-      .where(sql`organization_id is not null`),
+    uniqueIndex("idx_persona_profiles_tenant_key")
+      .on(table.tenantId, table.personaKey)
+      .where(sql`tenant_id is not null`),
     uniqueIndex("idx_persona_profiles_public_key")
       .on(table.personaKey)
-      .where(sql`organization_id is null`),
-    index("idx_persona_profiles_org_state").on(
-      table.organizationId,
+      .where(sql`tenant_id is null`),
+    index("idx_persona_profiles_tenant_state").on(
+      table.tenantId,
       table.state
     ),
     index("idx_persona_profiles_scope_state").on(
@@ -514,7 +514,7 @@ export const personaAliases = pgTable(
       .defaultNow(),
     createdByUserId: text("created_by_user_id"),
     id: text("id").primaryKey().$defaultFn(ulid),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -531,13 +531,13 @@ export const personaAliases = pgTable(
   },
   (table) => [
     index("idx_persona_aliases_persona").on(table.personaId),
-    index("idx_persona_aliases_org_surface_state").on(
-      table.organizationId,
+    index("idx_persona_aliases_tenant_surface_state").on(
+      table.tenantId,
       table.surface,
       table.state
     ),
-    uniqueIndex("idx_persona_aliases_org_surface_alias")
-      .on(table.organizationId, table.surface, table.aliasKey)
+    uniqueIndex("idx_persona_aliases_tenant_surface_alias")
+      .on(table.tenantId, table.surface, table.aliasKey)
       .where(sql`state <> 'deleted'`),
     check(
       "persona_aliases_alias_key_length_check",
@@ -577,7 +577,7 @@ export const personaSourceDocuments = pgTable(
       .$type<PersonaSourceMetadata>()
       .notNull()
       .default({}),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -605,12 +605,12 @@ export const personaSourceDocuments = pgTable(
   },
   (table) => [
     index("idx_persona_source_documents_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.state
     ),
     uniqueIndex("idx_persona_source_documents_hash")
-      .on(table.organizationId, table.personaId, table.contentHash)
+      .on(table.tenantId, table.personaId, table.contentHash)
       .where(sql`${table.contentHash} is not null`),
   ]
 );
@@ -626,7 +626,7 @@ export const personaSourceChunks = pgTable(
     endChar: integer("end_char"),
     entities: jsonb("entities").$type<string[]>().notNull().default([]),
     id: text("id").primaryKey().$defaultFn(ulid),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -644,7 +644,7 @@ export const personaSourceChunks = pgTable(
   (table) => [
     index("idx_persona_source_chunks_document").on(table.sourceDocumentId),
     index("idx_persona_source_chunks_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId
     ),
   ]
@@ -667,7 +667,7 @@ export const personaFacts = pgTable(
     objectKey: text("object_key"),
     objectName: text("object_name").notNull(),
     objectType: text("object_type").notNull().$type<PersonaFactObjectType>(),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -697,7 +697,7 @@ export const personaFacts = pgTable(
   },
   (table) => [
     index("idx_persona_facts_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.state
     ),
@@ -726,7 +726,7 @@ export const personaEpisodeMemories = pgTable(
     id: text("id").primaryKey().$defaultFn(ulid),
     lastActivatedAt: timestamp("last_activated_at", { withTimezone: true }),
     location: jsonb("location").$type<PersonaLocationMetadata>(),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     people: jsonb("people").$type<PersonaPersonRef[]>().notNull().default([]),
     personaId: text("persona_id")
       .notNull()
@@ -757,7 +757,7 @@ export const personaEpisodeMemories = pgTable(
   },
   (table) => [
     index("idx_persona_episode_memories_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.state
     ),
@@ -783,7 +783,7 @@ export const personaEmotionalSalience = pgTable(
       .references(() => personaEpisodeMemories.id, { onDelete: "cascade" }),
     id: text("id").primaryKey().$defaultFn(ulid),
     notes: text("notes"),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -802,7 +802,7 @@ export const personaEmotionalSalience = pgTable(
       table.episodeMemoryId
     ),
     index("idx_persona_emotional_salience_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId
     ),
   ]
@@ -821,7 +821,7 @@ export const personaMoodStates = pgTable(
       .defaultNow(),
     dominance: real("dominance").notNull().default(0.5),
     id: text("id").primaryKey().$defaultFn(ulid),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -835,7 +835,7 @@ export const personaMoodStates = pgTable(
   },
   (table) => [
     uniqueIndex("idx_persona_mood_states_scope").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.userId
     ),
@@ -860,7 +860,7 @@ export const personaSemanticBeliefs = pgTable(
     firstPersonForm: text("first_person_form"),
     id: text("id").primaryKey().$defaultFn(ulid),
     lastActivatedAt: timestamp("last_activated_at", { withTimezone: true }),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -894,7 +894,7 @@ export const personaSemanticBeliefs = pgTable(
   },
   (table) => [
     index("idx_persona_semantic_beliefs_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.state
     ),
@@ -919,7 +919,7 @@ export const personaHabitPatterns = pgTable(
       .notNull(),
     id: text("id").primaryKey().$defaultFn(ulid),
     lastActivatedAt: timestamp("last_activated_at", { withTimezone: true }),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -947,7 +947,7 @@ export const personaHabitPatterns = pgTable(
   },
   (table) => [
     index("idx_persona_habit_patterns_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.state
     ),
@@ -975,7 +975,7 @@ export const personaStyleProfiles = pgTable(
       .$type<{ uses?: string[]; avoids?: string[] }>()
       .notNull()
       .default({}),
-    organizationId: text("organization_id"),
+    tenantId: text("tenant_id"),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -1000,7 +1000,7 @@ export const personaStyleProfiles = pgTable(
   },
   (table) => [
     index("idx_persona_style_profiles_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.state
     ),
@@ -1016,7 +1016,7 @@ export const personaWorkspaceStates = pgTable(
       .notNull()
       .defaultNow(),
     id: text("id").primaryKey().$defaultFn(ulid),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     payload: jsonb("payload").$type<PersonaWorkspacePayload>().notNull(),
     personaId: text("persona_id")
       .notNull()
@@ -1027,7 +1027,7 @@ export const personaWorkspaceStates = pgTable(
   (table) => [
     index("idx_persona_workspace_states_session").on(table.chatSessionId),
     index("idx_persona_workspace_states_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId
     ),
   ]
@@ -1046,7 +1046,7 @@ export const personaInteractionMemories = pgTable(
     newPersonaMemory:
       jsonb("new_persona_memory").$type<Record<string, unknown>>(),
     newUserPreference: text("new_user_preference"),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -1060,7 +1060,7 @@ export const personaInteractionMemories = pgTable(
   },
   (table) => [
     index("idx_persona_interaction_memories_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.state
     ),
@@ -1088,7 +1088,7 @@ export const personaExternalMemoryRefs = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default({}),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -1109,12 +1109,12 @@ export const personaExternalMemoryRefs = pgTable(
   },
   (table) => [
     index("idx_persona_external_memory_refs_persona_provider").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.provider
     ),
     index("idx_persona_external_memory_refs_user_provider").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId,
       table.userId,
       table.provider
@@ -1165,7 +1165,7 @@ export const personaLifecycleEffects = pgTable(
     maxAttempts: integer("max_attempts").notNull().default(3),
     nextRunAt: timestamp("next_run_at", { withTimezone: true }),
     operationId: text("operation_id").notNull(),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     personaId: text("persona_id")
       .notNull()
@@ -1222,7 +1222,7 @@ export const personaMemoryEmbeddings = pgTable(
       dimensions: PERSONA_EMBEDDING_DIMENSION,
     }).notNull(),
     id: text("id").primaryKey().$defaultFn(ulid),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     personaId: text("persona_id")
       .notNull()
       .references(() => personaProfiles.id, { onDelete: "cascade" }),
@@ -1241,7 +1241,7 @@ export const personaMemoryEmbeddings = pgTable(
       table.targetId
     ),
     index("idx_persona_memory_embeddings_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId
     ),
   ]
@@ -1256,7 +1256,7 @@ export const personaAuditLogs = pgTable(
       .defaultNow(),
     id: text("id").primaryKey().$defaultFn(ulid),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull(),
-    organizationId: text("organization_id").notNull(),
+    tenantId: text("tenant_id").notNull(),
     personaId: text("persona_id").references(() => personaProfiles.id, {
       onDelete: "set null",
     }),
@@ -1264,7 +1264,7 @@ export const personaAuditLogs = pgTable(
   },
   (table) => [
     index("idx_persona_audit_logs_persona").on(
-      table.organizationId,
+      table.tenantId,
       table.personaId
     ),
     index("idx_persona_audit_logs_created").on(table.createdAt),

@@ -96,7 +96,7 @@ export function styleMemoryText(style: {
   )} ${style.commonPhrases.join(" ")} ${style.avoidPhrases.join(" ")}`;
 }
 export type PersonaMemoryEmbeddingEntry = {
-  organizationId: string;
+  tenantId: string;
   personaId: string;
   targetId: string;
   targetKind: PersonaEmbeddingTargetKind;
@@ -212,7 +212,7 @@ async function embedAndUpsertEntries(
     ({ contentHash, entry }, index) => ({
       contentHash,
       embedding: vectors[index] as number[],
-      organizationId: entry.organizationId,
+      tenantId: entry.tenantId,
       personaId: entry.personaId,
       targetId: entry.targetId,
       targetKind: entry.targetKind,
@@ -291,18 +291,18 @@ export async function backfillPersonaMemoryEmbeddings(
       .where(
         and(
           eq(personaEpisodeMemories.state, "active"),
-          isNotNull(personaEpisodeMemories.organizationId),
+          isNotNull(personaEpisodeMemories.tenantId),
           isNull(personaMemoryEmbeddings.id)
         )
       )
       .limit(remaining());
     entries.push(
       ...rows.flatMap(({ episode }) =>
-        episode.organizationId === null
+        episode.tenantId === null
           ? []
           : [
               {
-                organizationId: episode.organizationId,
+                tenantId: episode.tenantId,
                 personaId: episode.personaId,
                 targetId: episode.id,
                 targetKind: "episode" as const,
@@ -327,18 +327,18 @@ export async function backfillPersonaMemoryEmbeddings(
       .where(
         and(
           eq(personaSemanticBeliefs.state, "active"),
-          isNotNull(personaSemanticBeliefs.organizationId),
+          isNotNull(personaSemanticBeliefs.tenantId),
           isNull(personaMemoryEmbeddings.id)
         )
       )
       .limit(remaining());
     entries.push(
       ...rows.flatMap(({ belief }) =>
-        belief.organizationId === null
+        belief.tenantId === null
           ? []
           : [
               {
-                organizationId: belief.organizationId,
+                tenantId: belief.tenantId,
                 personaId: belief.personaId,
                 targetId: belief.id,
                 targetKind: "belief" as const,
@@ -363,18 +363,18 @@ export async function backfillPersonaMemoryEmbeddings(
       .where(
         and(
           eq(personaFacts.state, "active"),
-          isNotNull(personaFacts.organizationId),
+          isNotNull(personaFacts.tenantId),
           isNull(personaMemoryEmbeddings.id)
         )
       )
       .limit(remaining());
     entries.push(
       ...rows.flatMap(({ fact }) =>
-        fact.organizationId === null
+        fact.tenantId === null
           ? []
           : [
               {
-                organizationId: fact.organizationId,
+                tenantId: fact.tenantId,
                 personaId: fact.personaId,
                 targetId: fact.id,
                 targetKind: "fact" as const,
@@ -399,18 +399,18 @@ export async function backfillPersonaMemoryEmbeddings(
       .where(
         and(
           eq(personaHabitPatterns.state, "active"),
-          isNotNull(personaHabitPatterns.organizationId),
+          isNotNull(personaHabitPatterns.tenantId),
           isNull(personaMemoryEmbeddings.id)
         )
       )
       .limit(remaining());
     entries.push(
       ...rows.flatMap(({ habit }) =>
-        habit.organizationId === null
+        habit.tenantId === null
           ? []
           : [
               {
-                organizationId: habit.organizationId,
+                tenantId: habit.tenantId,
                 personaId: habit.personaId,
                 targetId: habit.id,
                 targetKind: "habit" as const,
@@ -435,18 +435,18 @@ export async function backfillPersonaMemoryEmbeddings(
       .where(
         and(
           eq(personaStyleProfiles.state, "active"),
-          isNotNull(personaStyleProfiles.organizationId),
+          isNotNull(personaStyleProfiles.tenantId),
           isNull(personaMemoryEmbeddings.id)
         )
       )
       .limit(remaining());
     entries.push(
       ...rows.flatMap(({ style }) =>
-        style.organizationId === null
+        style.tenantId === null
           ? []
           : [
               {
-                organizationId: style.organizationId,
+                tenantId: style.tenantId,
                 personaId: style.personaId,
                 targetId: style.id,
                 targetKind: "style" as const,
@@ -475,18 +475,18 @@ export async function backfillPersonaMemoryEmbeddings(
       .where(
         and(
           eq(personaSourceDocuments.state, "active"),
-          isNotNull(personaSourceChunks.organizationId),
+          isNotNull(personaSourceChunks.tenantId),
           isNull(personaMemoryEmbeddings.id)
         )
       )
       .limit(remaining());
     entries.push(
       ...rows.flatMap(({ chunk }) =>
-        chunk.organizationId === null
+        chunk.tenantId === null
           ? []
           : [
               {
-                organizationId: chunk.organizationId,
+                tenantId: chunk.tenantId,
                 personaId: chunk.personaId,
                 targetId: chunk.id,
                 targetKind: "source_chunk" as const,

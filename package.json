@@ -1,6 +1,6 @@
 {
   "name": "@wordbricks/persona",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Brain-inspired persona memory and runtime for LLM agents on Postgres/pgvector via Drizzle.",
   "keywords": [
     "agents",
@@ -44,6 +44,7 @@
   },
   "files": [
     "dist",
+    "CHANGELOG.md",
     "LICENSE",
     "NOTICE",
     "README.md",
