@@ -331,7 +331,7 @@ function scheduleHindsightLayerMemoryRetain(input: {
   logger?: PersonaLogger;
   localTargetId: string;
   memoryKind: "episode" | "fact" | "belief" | "habit" | "style" | "interaction";
-  organizationId: string;
+  tenantId: string;
   persona: PersonaProfile;
   privacyLevel: PersonaPrivacyLevel;
   summary: string;
@@ -367,14 +367,14 @@ function scheduleHindsightLayerMemoryRetain(input: {
       memoryKind: input.memoryKind,
       source: "rememberPersonaLayerMemory",
     },
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: input.persona.id,
     privacyLevel: input.privacyLevel,
     retainInput: {
       content,
       context: `Durable persona ${input.memoryKind} memory`,
       documentId: `persona_${input.memoryKind}_${input.localTargetId}`,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.persona.id,
       personaKey: input.persona.personaKey,
       privacyLevel: input.privacyLevel,
@@ -392,7 +392,7 @@ async function maybeReflectHindsightConsolidation(input: {
   hindsight?: HindsightPersonaMemoryClient | null;
   interactions: PersonaInteractionMemory[];
   logger?: PersonaLogger;
-  organizationId: string;
+  tenantId: string;
   persona: PersonaProfile;
   userId?: string | null;
 }): Promise<string | null> {
@@ -409,7 +409,7 @@ async function maybeReflectHindsightConsolidation(input: {
         )
         .join("\n")
         .slice(0, MAX_HINDSIGHT_RETAIN_CONTENT_CHARS),
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.persona.id,
       personaKey: input.persona.personaKey,
       query:
@@ -438,7 +438,7 @@ function scheduleHindsightConsolidatedMemoryRetain(input: {
     PersonaExternalMemoryLocalTargetKind,
     "interaction" | "source_document" | "source_chunk"
   >;
-  organizationId: string;
+  tenantId: string;
   persona: PersonaProfile;
   title: string;
   userId?: string | null;
@@ -456,7 +456,7 @@ function scheduleHindsightConsolidatedMemoryRetain(input: {
       memoryKind: input.localTargetKind,
       source: "consolidatePersonaMemoryScope",
     },
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: input.persona.id,
     privacyLevel,
     retainInput: {
@@ -466,7 +466,7 @@ function scheduleHindsightConsolidatedMemoryRetain(input: {
       ),
       context: `Consolidated persona ${input.localTargetKind} memory`,
       documentId: `persona_${input.localTargetKind}_${input.localTargetId}`,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: input.persona.id,
       personaKey: input.persona.personaKey,
       privacyLevel,
@@ -617,7 +617,7 @@ export async function rememberPersonaLayerMemory(
       | "habit"
       | "style"
       | "interaction";
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     privacyLevel?: PersonaPrivacyLevel | null;
     summary: string;
@@ -630,7 +630,7 @@ export async function rememberPersonaLayerMemory(
   memoryKind: "episode" | "fact" | "belief" | "habit" | "style" | "interaction";
 }> {
   const persona = await loadPersonaProfile(db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
   const confidence = clampScore(input.confidence ?? 0.82);
@@ -641,7 +641,7 @@ export async function rememberPersonaLayerMemory(
     authorUserId: input.updatedByUserId,
     embed: input.embed,
     logger: input.logger,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     persona,
     privacyLevel,
     rawText: `${input.title}\n${input.summary}`,
@@ -659,7 +659,7 @@ export async function rememberPersonaLayerMemory(
           typeof content.firstPersonRecollection === "string"
             ? content.firstPersonRecollection
             : null,
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         privacyLevel,
         sourceRefs: [{ sourceDocumentId: sourceDocument.id }],
@@ -683,7 +683,7 @@ export async function rememberPersonaLayerMemory(
           dominance: affect.dominance,
           emotions: affect.emotions,
           episodeMemoryId: episode.id,
-          organizationId: input.organizationId,
+          tenantId: input.tenantId,
           personaId: persona.id,
           retrievalBoost: affect.retrievalBoost,
           salienceScore: affect.salienceScore,
@@ -696,7 +696,7 @@ export async function rememberPersonaLayerMemory(
         embed: input.embed,
         entries: [
           {
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             personaId: persona.id,
             targetId: episode.id,
             targetKind: "episode",
@@ -713,7 +713,7 @@ export async function rememberPersonaLayerMemory(
         logger: input.logger,
         localTargetId: episode.id,
         memoryKind: "episode",
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         persona,
         privacyLevel,
         summary: input.summary,
@@ -739,7 +739,7 @@ export async function rememberPersonaLayerMemory(
           typeof content.firstPersonForm === "string"
             ? content.firstPersonForm
             : null,
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         privacyLevel,
         proposition: input.summary,
@@ -754,7 +754,7 @@ export async function rememberPersonaLayerMemory(
         embed: input.embed,
         entries: [
           {
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             personaId: persona.id,
             targetId: belief.id,
             targetKind: "belief",
@@ -771,7 +771,7 @@ export async function rememberPersonaLayerMemory(
         logger: input.logger,
         localTargetId: belief.id,
         memoryKind: "belief",
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         persona,
         privacyLevel,
         summary: input.summary,
@@ -817,7 +817,7 @@ export async function rememberPersonaLayerMemory(
           typeof content.objectType === "string"
             ? (content.objectType as PersonaFactObjectType)
             : "text",
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         privacyLevel,
         sourceDocumentId: sourceDocument.id,
@@ -830,7 +830,7 @@ export async function rememberPersonaLayerMemory(
         embed: input.embed,
         entries: [
           {
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             personaId: persona.id,
             targetId: fact.id,
             targetKind: "fact",
@@ -847,7 +847,7 @@ export async function rememberPersonaLayerMemory(
         logger: input.logger,
         localTargetId: fact.id,
         memoryKind: "fact",
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         persona,
         privacyLevel,
         summary: input.summary,
@@ -868,7 +868,7 @@ export async function rememberPersonaLayerMemory(
           readStringArray(content.defaultResponsePattern).length > 0
             ? readStringArray(content.defaultResponsePattern)
             : [input.summary],
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         rhetoricalMoves: readStringArray(content.rhetoricalMoves),
         strength: confidence,
@@ -891,7 +891,7 @@ export async function rememberPersonaLayerMemory(
         embed: input.embed,
         entries: [
           {
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             personaId: persona.id,
             targetId: habit.id,
             targetKind: "habit",
@@ -908,7 +908,7 @@ export async function rememberPersonaLayerMemory(
         logger: input.logger,
         localTargetId: habit.id,
         memoryKind: "habit",
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         persona,
         privacyLevel,
         summary: input.summary,
@@ -928,7 +928,7 @@ export async function rememberPersonaLayerMemory(
         lexicalPreferences: parsePersonaLexicalPreferences(
           content.lexicalPreferences
         ),
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         preferredRhetoricalMoves: readStringArray(
           content.preferredRhetoricalMoves
@@ -948,7 +948,7 @@ export async function rememberPersonaLayerMemory(
         embed: input.embed,
         entries: [
           {
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             personaId: persona.id,
             targetId: style.id,
             targetKind: "style",
@@ -965,7 +965,7 @@ export async function rememberPersonaLayerMemory(
         logger: input.logger,
         localTargetId: style.id,
         memoryKind: "style",
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         persona,
         privacyLevel,
         summary: input.summary,
@@ -981,7 +981,7 @@ export async function rememberPersonaLayerMemory(
     .values({
       interactionSummary: input.summary,
       newPersonaMemory: content,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: persona.id,
       shouldConsolidate: true,
       state: "consolidation_candidate",
@@ -997,7 +997,7 @@ export async function rememberPersonaLayerMemory(
       logger: input.logger,
       localTargetId: interaction.id,
       memoryKind: "interaction",
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       persona,
       privacyLevel,
       summary: input.summary,
@@ -1015,7 +1015,7 @@ export async function consolidatePersonaMemoryScope(input: {
   embed?: PersonaEmbedder;
   hindsight?: HindsightPersonaMemoryClient | null;
   logger?: PersonaLogger;
-  organizationId: string;
+  tenantId: string;
   personaKey: string;
   userId?: string | null;
 }): Promise<{
@@ -1028,7 +1028,7 @@ export async function consolidatePersonaMemoryScope(input: {
   reinforcedBeliefs: number;
 }> {
   const persona = await loadPersonaProfile(input.db, {
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaKey: input.personaKey,
   });
   const interactions = await input.db
@@ -1036,7 +1036,7 @@ export async function consolidatePersonaMemoryScope(input: {
     .from(personaInteractionMemories)
     .where(
       and(
-        eq(personaInteractionMemories.organizationId, input.organizationId),
+        eq(personaInteractionMemories.tenantId, input.tenantId),
         eq(personaInteractionMemories.personaId, persona.id),
         input.userId
           ? eq(personaInteractionMemories.userId, input.userId)
@@ -1067,7 +1067,7 @@ export async function consolidatePersonaMemoryScope(input: {
     .from(personaSemanticBeliefs)
     .where(
       and(
-        eq(personaSemanticBeliefs.organizationId, input.organizationId),
+        eq(personaSemanticBeliefs.tenantId, input.tenantId),
         eq(personaSemanticBeliefs.personaId, persona.id),
         eq(personaSemanticBeliefs.state, "active")
       )
@@ -1081,7 +1081,7 @@ export async function consolidatePersonaMemoryScope(input: {
     hindsight: input.hindsight,
     interactions,
     logger: input.logger,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     persona,
     userId: input.userId,
   });
@@ -1143,7 +1143,7 @@ export async function consolidatePersonaMemoryScope(input: {
     confidence: entry.confidence,
     domain: entry.domain,
     firstPersonForm: entry.firstPersonForm ?? null,
-    organizationId: input.organizationId,
+    tenantId: input.tenantId,
     personaId: persona.id,
     privacyLevel: "internal",
     proposition: entry.proposition,
@@ -1177,7 +1177,7 @@ export async function consolidatePersonaMemoryScope(input: {
     (episode) => ({
       confidence: episode.confidence,
       eventSummary: episode.eventSummary,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: persona.id,
       privacyLevel: "internal",
       sourceRefs: sourceIds.map((id) => ({ quoteSpan: id })),
@@ -1188,7 +1188,7 @@ export async function consolidatePersonaMemoryScope(input: {
     (habit) => ({
       confidence: habit.confidence,
       defaultResponsePattern: habit.defaultResponsePattern,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: persona.id,
       strength: habit.strength,
       supportingExampleIds: sourceIds,
@@ -1197,7 +1197,7 @@ export async function consolidatePersonaMemoryScope(input: {
   );
   const styleValues: NewPersonaStyleProfile[] = parsed.data.styleProfiles.map(
     (style) => ({
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       personaId: persona.id,
       register: style.register,
       sentenceLength: style.sentenceLength,
@@ -1231,28 +1231,28 @@ export async function consolidatePersonaMemoryScope(input: {
     embed: input.embed,
     entries: [
       ...createdEpisodes.map((episode) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: episode.id,
         targetKind: "episode" as const,
         text: episodeMemoryText(episode),
       })),
       ...createdBeliefs.map((belief) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: belief.id,
         targetKind: "belief" as const,
         text: beliefMemoryText(belief),
       })),
       ...createdHabits.map((habit) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: habit.id,
         targetKind: "habit" as const,
         text: habitMemoryText(habit),
       })),
       ...createdStyleProfiles.map((style) => ({
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         personaId: persona.id,
         targetId: style.id,
         targetKind: "style" as const,
@@ -1270,7 +1270,7 @@ export async function consolidatePersonaMemoryScope(input: {
       logger: input.logger,
       localTargetId: episode.id,
       localTargetKind: "episode",
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       persona,
       title: episode.title,
       userId: input.userId,
@@ -1285,7 +1285,7 @@ export async function consolidatePersonaMemoryScope(input: {
       logger: input.logger,
       localTargetId: belief.id,
       localTargetKind: "belief",
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       persona,
       title: belief.domain,
       userId: input.userId,
@@ -1300,7 +1300,7 @@ export async function consolidatePersonaMemoryScope(input: {
       logger: input.logger,
       localTargetId: habit.id,
       localTargetKind: "habit",
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       persona,
       title: habit.trigger.description,
       userId: input.userId,
@@ -1315,7 +1315,7 @@ export async function consolidatePersonaMemoryScope(input: {
       logger: input.logger,
       localTargetId: style.id,
       localTargetKind: "style",
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       persona,
       title: `${style.register} ${style.sentenceLength}`.trim(),
       userId: input.userId,
@@ -1374,7 +1374,7 @@ export async function consolidatePersonaMemoryScope(input: {
     .set({ state: "consolidated" })
     .where(
       and(
-        eq(personaInteractionMemories.organizationId, input.organizationId),
+        eq(personaInteractionMemories.tenantId, input.tenantId),
         eq(personaInteractionMemories.personaId, persona.id),
         or(
           ...interactions.map((interaction) =>
@@ -1413,7 +1413,7 @@ export async function processPersonaMemoryConsolidationTick(input: {
 }> {
   const candidates = await input.db
     .select({
-      organizationId: personaInteractionMemories.organizationId,
+      tenantId: personaInteractionMemories.tenantId,
       personaId: personaInteractionMemories.personaId,
       personaKey: personaProfiles.personaKey,
       userId: personaInteractionMemories.userId,
@@ -1433,7 +1433,7 @@ export async function processPersonaMemoryConsolidationTick(input: {
 
   const scopeKeys = new Set<string>();
   const scopes = candidates.filter((candidate) => {
-    const key = `${candidate.organizationId}:${candidate.personaKey}:${
+    const key = `${candidate.tenantId}:${candidate.personaKey}:${
       candidate.userId ?? ""
     }`;
     if (scopeKeys.has(key)) {
@@ -1459,7 +1459,7 @@ export async function processPersonaMemoryConsolidationTick(input: {
       db: input.db,
       embed: input.embed,
       logger: input.logger,
-      organizationId: scope.organizationId,
+      tenantId: scope.tenantId,
       personaKey: scope.personaKey,
       userId: scope.userId,
     });

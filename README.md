@@ -60,7 +60,31 @@ export default defineConfig({
 
 Then generate and apply migrations through your normal Drizzle workflow.
 
-`organizationId`, `userId`, `chatSessionId`, and `chatMessageId` are opaque string scoping columns. The package intentionally does not declare foreign keys to host-app tables. If your app wants referential constraints, add them in your own migrations.
+`tenantId`, `userId`, `chatSessionId`, and `chatMessageId` are opaque string scoping columns. The package intentionally does not declare foreign keys to host-app tables. If your app wants referential constraints, add them in your own migrations.
+
+### Upgrading from 0.1.x to 0.2.0
+
+Version 0.2.0 is a breaking release that replaces organization-scoped naming
+with tenant-scoped naming. Before upgrading the package in an existing app:
+
+1. Replace `organizationId`, `sourceOrganizationId`, and
+   `targetOrganizationId` with their `tenantId` equivalents in application
+   code, queued jobs, cached payloads, and serialized events.
+2. Generate and review a migration that renames all persona table
+   `organization_id` columns to `tenant_id`. Ensure the migration uses column
+   renames instead of dropping and recreating columns.
+3. Change existing `persona_scope = 'organization'` rows and the column default
+   to `persona_scope = 'tenant'`.
+4. Rename the affected profile and alias indexes from `org` to `tenant`, or let
+   the reviewed migration recreate them safely.
+5. Update Hindsight tag consumers from `org_*` to `tenant_*`. Bank IDs remain
+   stable when the underlying tenant identifier value is unchanged.
+6. Deploy the database migration and all package consumers as one coordinated
+   release. Old application versions expect `organization_id`, while 0.2.0
+   expects `tenant_id`, so mixed-version operation is not supported.
+
+See [CHANGELOG.md](./CHANGELOG.md) for the affected tables and a migration
+checklist.
 
 Embeddings are stored at `PERSONA_EMBEDDING_DIMENSION` (`1536`), matching OpenAI `text-embedding-3-small` through the built-in helper. If you use a different embedder, keep the schema dimension aligned with that embedder.
 
@@ -87,7 +111,7 @@ import * as personaSchema from "@wordbricks/persona/schema";
 const sql = postgres(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema: personaSchema }) as PersonaDatabase;
 
-const organizationId = "org_123";
+const tenantId = "tenant_123";
 const personaKey = "product-coach";
 const userId = "user_123";
 const openAiApiKey = process.env.OPENAI_API_KEY!;
@@ -119,7 +143,7 @@ const personaJsonLlm: PersonaJsonLlm = async ({ systemPrompt, userPrompt }) => {
 };
 
 const persona = await upsertPersonaProfile(db, {
-  organizationId,
+  tenantId,
   personaKey,
   displayName: "Product Coach",
   personaType: "synthetic_role",
@@ -136,7 +160,7 @@ const persona = await upsertPersonaProfile(db, {
 });
 
 await ingestPersonaSourceDocument(db, {
-  organizationId,
+  tenantId,
   personaKey,
   title: "Product Coach Seed Notes",
   rawText:
@@ -148,7 +172,7 @@ await ingestPersonaSourceDocument(db, {
 });
 
 await rememberPersonaLayerMemory(db, {
-  organizationId,
+  tenantId,
   personaKey,
   userId,
   updatedByUserId: userId,
@@ -167,7 +191,7 @@ await rememberPersonaLayerMemory(db, {
 
 const userMessage = "Should we build a dashboard for this feature first?";
 const runtime = await preparePersonaRuntimeContext(db, {
-  organizationId,
+  tenantId,
   personaKey,
   userId,
   message: userMessage,
@@ -190,7 +214,7 @@ const answer = await yourChatLlm({
 });
 
 await recordPostResponsePersonaMemoryReview(db, {
-  organizationId,
+  tenantId,
   userId,
   userMessage,
   assistantMessage: answer,

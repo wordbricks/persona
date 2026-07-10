@@ -54,9 +54,9 @@ const profile: PersonaProfile = {
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   displayName: "Juno",
   id: "persona_1",
-  organizationId: "org_1",
+  tenantId: "tenant_1",
   personaKey: "juno",
-  personaScope: "organization",
+  personaScope: "tenant",
   personaType: "simulated_character",
   personaVersion: "v1",
   policy: {
@@ -603,7 +603,7 @@ describe("formatWorkspacePrompt", () => {
               kind: "external_observation",
               privacyLevel: "private",
               provenance: {
-                bankId: "persona_user_org_persona_user",
+                bankId: "persona_user_tenant_persona_user",
                 citations: ["conversation memory from 2026-06-24"],
                 memoryId: "memory_1",
                 provider: "hindsight",

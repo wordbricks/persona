@@ -40,7 +40,7 @@ export type PersonaProfileDeleteCounts = {
 export async function deletePersonaProfile(
   db: Database,
   input: {
-    organizationId: string;
+    tenantId: string;
     personaKey: string;
     updatedByUserId?: string | null;
   }
@@ -61,7 +61,7 @@ export async function deletePersonaProfile(
       .from(personaProfiles)
       .where(
         and(
-          eq(personaProfiles.organizationId, input.organizationId),
+          eq(personaProfiles.tenantId, input.tenantId),
           eq(personaProfiles.personaKey, personaKey),
           eq(personaProfiles.state, "active")
         )
@@ -69,7 +69,7 @@ export async function deletePersonaProfile(
       .limit(1);
     if (!persona) {
       throw new Error(
-        `Persona ${personaKey} is not configured for this organization.`
+        `Persona ${personaKey} is not configured for this tenant.`
       );
     }
 
@@ -81,7 +81,7 @@ export async function deletePersonaProfile(
         .set({ state: "deleted", updatedAt: now, updatedByUserId })
         .where(
           and(
-            eq(personaAliases.organizationId, input.organizationId),
+            eq(personaAliases.tenantId, input.tenantId),
             eq(personaAliases.personaId, persona.id),
             ne(personaAliases.state, "deleted")
           )

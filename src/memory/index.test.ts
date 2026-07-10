@@ -152,7 +152,7 @@ describe("Hindsight persona memory client", () => {
     desiredMemoryTypes: turnPlan.gate.neededMemoryTypes,
     maxResults: 5,
     message: "What did I say I prefer?",
-    organizationId: "org_1",
+    tenantId: "tenant_1",
     personaId: "persona_1",
     personaKey: "juno",
     retrievalQueries: turnPlan.context.retrievalQueries,
