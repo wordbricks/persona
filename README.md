@@ -266,6 +266,9 @@ Read [RESPONSIBLE_USE.md](./RESPONSIBLE_USE.md) before enabling personas for rea
 
 ## Development
 
+See [RELEASING.md](./RELEASING.md) for the npm trusted-publishing setup and
+release procedure.
+
 ```sh
 bun install
 bun run test

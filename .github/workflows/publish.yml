@@ -1,0 +1,52 @@
+name: Publish npm package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    environment: npm
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.15.0"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Use an npm CLI with trusted publishing support
+        run: npm install --global npm@12.0.1
+
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          if [[ "${GITHUB_REF_NAME}" != "v${package_version}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package version ${package_version}."
+            exit 1
+          fi
+
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run build
+      - run: npm pack --dry-run
+
+      - name: Publish with npm trusted publishing
+        run: npm publish --access public
