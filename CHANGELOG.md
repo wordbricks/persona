@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 - 2026-07-12
+
+- Export strict JSON workflow schemas, including `personaTurnPlanSchema`,
+  `personaMemoryTriageDecisionSchema`, `consolidationOutputSchema`, and
+  `personaSourceDraftMemorySchema`.
+- Pass the applicable `schema` and `workflow` to every `PersonaJsonLlm` call so
+  consumers can use provider-native structured output instead of JSON mode.
+
 ## 0.2.0 - 2026-07-10
 
 ### Breaking changes

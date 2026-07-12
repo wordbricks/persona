@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import type { PersonaDatabase as Database } from "../db";
 import {
@@ -10,6 +11,11 @@ import {
   personaSourceChunks,
   personaSourceDocuments,
   personaStyleProfiles,
+  PERSONA_BELIEF_STANCES,
+  PERSONA_BELIEF_TYPES,
+  PERSONA_FACT_OBJECT_TYPES,
+  PERSONA_FACT_TYPES,
+  PERSONA_PRIVACY_LEVELS,
 } from "../schema";
 import type {
   NewPersonaEpisodeMemory,
@@ -623,6 +629,140 @@ export type PersonaSourceDraftMemoryInput = {
   sourceFacts?: PersonaSourceDraftFact[];
   styleProfiles?: PersonaSourceDraftStyleProfile[];
 };
+
+const personaSourceDraftConfidenceSchema = z.number().min(0).max(1);
+const personaSourceDraftNullableScoreSchema = z
+  .number()
+  .min(0)
+  .max(1)
+  .nullable()
+  .optional();
+const personaSourceDraftPrivacySchema = z
+  .enum(PERSONA_PRIVACY_LEVELS)
+  .nullable()
+  .optional();
+const personaSourceDraftToneSchema = z.record(z.string(), z.number());
+
+/** Strict schema for JSON returned from PERSONA_SOURCE_DRAFTING_SYSTEM_PROMPT. */
+export const personaSourceDraftMemorySchema = z
+  .object({
+    beliefs: z
+      .array(
+        z
+          .object({
+            beliefType: z.enum(PERSONA_BELIEF_TYPES),
+            confidence: personaSourceDraftConfidenceSchema,
+            domain: z.string().min(1),
+            exceptions: z.array(z.string()).optional(),
+            firstPersonForm: z.string().nullable().optional(),
+            privacyLevel: personaSourceDraftPrivacySchema,
+            proposition: z.string().min(1),
+            sourceChunkIds: z.array(z.string().min(1)).optional(),
+            stance: z.enum(PERSONA_BELIEF_STANCES).optional(),
+            strength: personaSourceDraftNullableScoreSchema,
+          })
+          .strict()
+      )
+      .default([]),
+    episodes: z
+      .array(
+        z
+          .object({
+            confidence: personaSourceDraftConfidenceSchema,
+            eventSummary: z.string().min(1),
+            firstPersonRecollection: z.string().nullable().optional(),
+            privacyLevel: personaSourceDraftPrivacySchema,
+            quoteSpan: z.string().nullable().optional(),
+            sourceChunkIds: z.array(z.string().min(1)).optional(),
+            themes: z.array(z.string()).optional(),
+            thoughtAnnotations: z.array(z.string()).optional(),
+            time: z
+              .object({
+                date: z.string().nullable().optional(),
+                from: z.string().nullable().optional(),
+                lifeStage: z.string().nullable().optional(),
+                precision: z
+                  .enum(["day", "month", "year", "range", "unknown"])
+                  .optional(),
+                to: z.string().nullable().optional(),
+              })
+              .strict()
+              .optional(),
+            title: z.string().min(1),
+          })
+          .strict()
+      )
+      .default([]),
+    habits: z
+      .array(
+        z
+          .object({
+            avoidPatterns: z.array(z.string()).optional(),
+            confidence: personaSourceDraftConfidenceSchema,
+            defaultResponsePattern: z.array(z.string().min(1)).min(1),
+            rhetoricalMoves: z.array(z.string()).optional(),
+            sourceChunkIds: z.array(z.string().min(1)).optional(),
+            strength: personaSourceDraftNullableScoreSchema,
+            tone: personaSourceDraftToneSchema.optional(),
+            trigger: z
+              .object({
+                description: z.string().min(1),
+                type: z.string().min(1),
+              })
+              .strict(),
+          })
+          .strict()
+      )
+      .default([]),
+    sourceFacts: z
+      .array(
+        z
+          .object({
+            beliefType: z.enum(PERSONA_BELIEF_TYPES).optional(),
+            claimText: z.string().min(1).optional(),
+            confidence: personaSourceDraftConfidenceSchema,
+            domain: z.string().min(1).optional(),
+            evidenceSpan: z.string().nullable().optional(),
+            fact: z.string().min(1).optional(),
+            factType: z.enum(PERSONA_FACT_TYPES).nullable().optional(),
+            firstPersonForm: z.string().nullable().optional(),
+            objectKey: z.string().nullable().optional(),
+            objectName: z.string().nullable().optional(),
+            objectType: z
+              .enum(PERSONA_FACT_OBJECT_TYPES)
+              .nullable()
+              .optional(),
+            privacyLevel: personaSourceDraftPrivacySchema,
+            sourceChunkIds: z.array(z.string().min(1)).optional(),
+            strength: personaSourceDraftNullableScoreSchema,
+          })
+          .strict()
+      )
+      .default([]),
+    styleProfiles: z
+      .array(
+        z
+          .object({
+            avoidPhrases: z.array(z.string()).optional(),
+            commonPhrases: z.array(z.string()).optional(),
+            lexicalPreferences: z
+              .object({
+                avoids: z.array(z.string()).optional(),
+                uses: z.array(z.string()).optional(),
+              })
+              .strict()
+              .optional(),
+            preferredRhetoricalMoves: z.array(z.string()).optional(),
+            register: z.string().min(1),
+            sentenceLength: z.string().min(1),
+            sourceChunkIds: z.array(z.string().min(1)).optional(),
+            toneVector: personaSourceDraftToneSchema.optional(),
+          })
+          .strict()
+      )
+      .default([]),
+  })
+  .strict();
 
 export type PersonaDraftMemorySummary = {
   id: string;

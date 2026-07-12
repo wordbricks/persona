@@ -6,9 +6,35 @@ import {
   PERSONA_SOURCE_DRAFTING_SYSTEM_PROMPT,
   PERSONA_TURN_PLANNER_SYSTEM_PROMPT,
 } from "./prompts";
-import { PERSONA_ANSWER_MODES } from "./types";
+import { personaSourceDraftMemorySchema } from "./source-ingestion";
+import {
+  consolidationOutputSchema,
+  PERSONA_ANSWER_MODES,
+  personaTurnPlanSchema,
+} from "./types";
+
+function promptJsonExample(prompt: string): unknown {
+  const marker = "Return exactly this shape: ";
+  const lines = prompt.split("\n");
+  const index = lines.findIndex(
+    (entry) => entry === marker.trimEnd() || entry.startsWith(marker)
+  );
+  if (index < 0) {
+    throw new Error("Missing prompt JSON example.");
+  }
+  const inlineJson = lines[index]?.slice(marker.length);
+  return JSON.parse(inlineJson || lines[index + 1] || "");
+}
 
 describe("persona turn planner prompt", () => {
+  it("shows an example accepted by the exported workflow schema", () => {
+    expect(
+      personaTurnPlanSchema.safeParse(
+        promptJsonExample(PERSONA_TURN_PLANNER_SYSTEM_PROMPT)
+      ).success
+    ).toBe(true);
+  });
+
   it("only exposes the supported answer modes", () => {
     expect(PERSONA_ANSWER_MODES).toEqual([
       "persona_grounded_response",
@@ -68,16 +94,13 @@ describe("persona turn planner prompt", () => {
 
 describe("persona consolidation prompt", () => {
   it("shows a schema-complete JSON example", () => {
-    const marker = "Return exactly this shape: ";
-    const line = PERSONA_CONSOLIDATION_SYSTEM_PROMPT.split("\n").find((entry) =>
-      entry.startsWith(marker)
-    );
-
-    expect(line).toBeTruthy();
-    if (!line) {
-      throw new Error("Missing consolidation prompt JSON example.");
-    }
-    const example = JSON.parse(line.slice(marker.length));
+    const example = promptJsonExample(PERSONA_CONSOLIDATION_SYSTEM_PROMPT) as {
+      beliefs: unknown[];
+      episodes: unknown[];
+      habits: unknown[];
+      styleProfiles: unknown[];
+    };
+    expect(consolidationOutputSchema.safeParse(example).success).toBe(true);
     expect(example.beliefs[0]).toMatchObject({
       action: "create",
       beliefType: "professional_norm",
@@ -105,6 +128,16 @@ describe("persona consolidation prompt", () => {
       sentenceLength: expect.any(String),
       toneVector: expect.any(Object),
     });
+  });
+});
+
+describe("persona source drafting prompt", () => {
+  it("shows an example accepted by the exported workflow schema", () => {
+    expect(
+      personaSourceDraftMemorySchema.safeParse(
+        promptJsonExample(PERSONA_SOURCE_DRAFTING_SYSTEM_PROMPT)
+      ).success
+    ).toBe(true);
   });
 });
 

@@ -15,7 +15,7 @@ This package is bring-your-own infrastructure:
 
 - Bring your own Postgres database with pgvector. The schema is implemented with Drizzle and exported from `@wordbricks/persona/schema`.
 - Bring your own Drizzle database handle. `drizzle-orm` is a peer dependency so your app and this package share one Drizzle instance.
-- Bring your own LLM. Planning, triage, and consolidation use the `PersonaJsonLlm` callback: `{ systemPrompt, userPrompt } => Promise<unknown>`.
+- Bring your own LLM. Planning, triage, and consolidation use the `PersonaJsonLlm` callback and provide the workflow's strict Zod `schema` for structured generation.
 - Bring your own embedder. Retrieval works lexically without embeddings, or semantically with any `PersonaEmbedder`; the package includes `createOpenAiPersonaEmbedder` for OpenAI embeddings.
 - Bring your own chat runtime. `buildPersonaInstructions` returns instructions that you pass to your normal agent or chat-completion stack.
 - Optionally attach an external memory service. The Hindsight adapter can recall, retain, and reflect through `createHindsightPersonaMemoryClient`.
@@ -107,6 +107,7 @@ import {
 } from "@wordbricks/persona";
 import type { PersonaDatabase, PersonaJsonLlm } from "@wordbricks/persona";
 import * as personaSchema from "@wordbricks/persona/schema";
+import { z } from "zod";
 
 const sql = postgres(process.env.DATABASE_URL!);
 const db = drizzle(sql, { schema: personaSchema }) as PersonaDatabase;
@@ -117,7 +118,12 @@ const userId = "user_123";
 const openAiApiKey = process.env.OPENAI_API_KEY!;
 const embed = createOpenAiPersonaEmbedder(openAiApiKey);
 
-const personaJsonLlm: PersonaJsonLlm = async ({ systemPrompt, userPrompt }) => {
+const personaJsonLlm: PersonaJsonLlm = async ({
+  schema,
+  systemPrompt,
+  userPrompt,
+  workflow,
+}) => {
   const response = await fetch("https://api.example.com/chat/completions", {
     method: "POST",
     headers: {
@@ -126,7 +132,14 @@ const personaJsonLlm: PersonaJsonLlm = async ({ systemPrompt, userPrompt }) => {
     },
     body: JSON.stringify({
       model: "your-json-mode-model",
-      response_format: { type: "json_object" },
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: workflow,
+          schema: z.toJSONSchema(schema),
+          strict: true,
+        },
+      },
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `${userPrompt}\n\nReturn JSON only.` },

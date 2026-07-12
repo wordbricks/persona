@@ -67,8 +67,13 @@ import {
   MAX_HINDSIGHT_RETAIN_CONTENT_CHARS,
   MAX_MEMORY_ENTRY_CHARS,
   PERSONA_ANSWER_MODES,
+  PERSONA_JSON_WORKFLOWS,
   PERSONA_MEMORY_TYPES,
   PERSONA_QUERY_TYPES,
+  personaContextGatewaySchema,
+  personaGateSchema,
+  personaMemoryTriageDecisionSchema,
+  personaTurnPlanSchema,
 } from "./types";
 import type {
   DisclosurePolicy,
@@ -76,6 +81,8 @@ import type {
   PersonaContextGatewayOutput,
   PersonaEmbedder,
   PersonaJsonLlm,
+  PersonaJsonLlmInput,
+  PersonaJsonWorkflow,
   PersonaMemoryCandidate,
   PersonaMemorySelectionResult,
   PersonaMemoryTriageDecision,
@@ -166,6 +173,7 @@ export {
   formatPersonaSourceExcerptForQuery,
   hashPersonaSourceContent,
   ingestPersonaSourceDocument,
+  personaSourceDraftMemorySchema,
 } from "./source-ingestion";
 export type {
   PersonaDraftMemorySummary,
@@ -179,7 +187,17 @@ export type {
   PersonaSourceIngestionResult,
   PersonaSourceTextChunk,
 } from "./source-ingestion";
-export { PERSONA_ANSWER_MODES, PERSONA_MEMORY_TYPES, PERSONA_QUERY_TYPES };
+export {
+  consolidationOutputSchema,
+  PERSONA_ANSWER_MODES,
+  PERSONA_JSON_WORKFLOWS,
+  PERSONA_MEMORY_TYPES,
+  PERSONA_QUERY_TYPES,
+  personaContextGatewaySchema,
+  personaGateSchema,
+  personaMemoryTriageDecisionSchema,
+  personaTurnPlanSchema,
+};
 export type {
   DisclosurePolicy,
   PersonaAffectVector,
@@ -188,6 +206,8 @@ export type {
   PersonaEmbedder,
   PersonaGateOutput,
   PersonaJsonLlm,
+  PersonaJsonLlmInput,
+  PersonaJsonWorkflow,
   PersonaMemoryCandidate,
   PersonaMemorySelectionResult,
   PersonaMemoryTriageDecision,
@@ -1087,6 +1107,7 @@ export async function consolidatePersonaMemoryScope(input: {
   });
 
   const output = await input.consolidate({
+    schema: consolidationOutputSchema,
     systemPrompt: PERSONA_CONSOLIDATION_SYSTEM_PROMPT,
     userPrompt: buildConsolidationUserPrompt({
       existingBeliefs,
@@ -1098,6 +1119,7 @@ export async function consolidatePersonaMemoryScope(input: {
       persona,
       reflection,
     }),
+    workflow: "consolidation",
   });
   const parsed = consolidationOutputSchema.safeParse(output);
   if (!parsed.success) {

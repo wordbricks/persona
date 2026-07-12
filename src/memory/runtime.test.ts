@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { PersonaProfile, PersonaWorkspacePayload } from "../schema";
 import { calculatePersonaMoodUpdate } from "./mood";
 import {
+  personaMemoryTriageDecisionSchema,
+  personaTurnPlanSchema,
+} from "./types";
+import {
   evaluatePostResponseInteractionMemory,
   formatWorkspacePrompt,
   planPersonaTurnWithLlm,
@@ -114,6 +118,26 @@ function buildCandidate(
 }
 
 describe("persona turn planner prompt", () => {
+  it("provides the strict workflow schema to the JSON LLM", async () => {
+    let received:
+      | { schema: unknown; workflow: string }
+      | undefined;
+
+    await planPersonaTurnWithLlm({
+      llm: async (input) => {
+        received = input;
+        return turnPlan;
+      },
+      message: "What should I do?",
+      persona: profile,
+    });
+
+    expect(received).toMatchObject({
+      schema: personaTurnPlanSchema,
+      workflow: "turn_planner",
+    });
+  });
+
   it("accepts planner turns that do not need pre-activated memory", async () => {
     await expect(
       planPersonaTurnWithLlm({
@@ -327,6 +351,37 @@ describe("shouldRecordInteractionMemory", () => {
 });
 
 describe("triageInteractionMemoryWithLlm", () => {
+  it("provides the strict triage schema to the JSON LLM", async () => {
+    let received:
+      | { schema: unknown; workflow: string }
+      | undefined;
+
+    await triageInteractionMemoryWithLlm({
+      llm: async (input) => {
+        received = input;
+        return {
+          confidence: 0.84,
+          dedupeKey: "dislikes-large-prs",
+          memoryIntent: "user_preference",
+          memoryType: "preference",
+          privacyLevel: "private",
+          reason: "Stable preference.",
+          shouldRemember: true,
+          summary: "The user dislikes large PRs.",
+          themes: ["code_review"],
+        };
+      },
+      message: "긴 PR 보면 리뷰하기 싫더라.",
+      persona: profile,
+      turnPlan,
+    });
+
+    expect(received).toMatchObject({
+      schema: personaMemoryTriageDecisionSchema,
+      workflow: "memory_triage",
+    });
+  });
+
   it("records implicit durable preferences that hard rules miss", async () => {
     const decision = await triageInteractionMemoryWithLlm({
       llm: async () => ({

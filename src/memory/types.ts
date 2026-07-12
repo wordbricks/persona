@@ -134,10 +134,24 @@ export type PersonaRuntimeContext = {
   workspaceId: string;
 };
 
-export type PersonaJsonLlm = (input: {
+export const PERSONA_JSON_WORKFLOWS = [
+  "turn_planner",
+  "memory_triage",
+  "consolidation",
+  "source_drafting",
+] as const;
+
+export type PersonaJsonWorkflow = (typeof PERSONA_JSON_WORKFLOWS)[number];
+
+export type PersonaJsonLlmInput = {
+  /** Strict output schema for the workflow. Pass this to the provider's structured-output API. */
+  schema: z.ZodType;
   systemPrompt: string;
   userPrompt: string;
-}) => Promise<unknown>;
+  workflow: PersonaJsonWorkflow;
+};
+
+export type PersonaJsonLlm = (input: PersonaJsonLlmInput) => Promise<unknown>;
 
 // Deferred effect for text embeddings, mirroring PersonaJsonLlm: callers
 // inject the provider so retrieval and write paths stay testable and degrade
@@ -308,7 +322,7 @@ function normalizePersonaQueryFocusTime(value: unknown): unknown {
   return nonEmptyTimeEntries.length > 0 ? nonEmptyTimeEntries.join(", ") : null;
 }
 
-const personaGateSchema = z
+export const personaGateSchema = z
   .object({
     answerMode: z.enum(PERSONA_ANSWER_MODES),
     audit: z
@@ -335,7 +349,7 @@ const personaGateSchema = z
   })
   .strict();
 
-const personaContextGatewaySchema = z
+export const personaContextGatewaySchema = z
   .object({
     contextKeys: z
       .object({

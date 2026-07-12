@@ -854,11 +854,13 @@ export async function planPersonaTurnWithLlm(input: {
   persona: PersonaProfile;
 }): Promise<PersonaTurnPlan> {
   const output = await input.llm({
+    schema: personaTurnPlanSchema,
     systemPrompt: PERSONA_TURN_PLANNER_SYSTEM_PROMPT,
     userPrompt: buildTurnPlannerUserPrompt({
       message: input.message,
       persona: input.persona,
     }),
+    workflow: "turn_planner",
   });
   return parseTurnPlan(output);
 }
@@ -2001,8 +2003,10 @@ export async function triageInteractionMemoryWithLlm(input: {
   const logger = resolvePersonaLogger(input.logger);
   try {
     const output = await input.llm({
+      schema: personaMemoryTriageDecisionSchema,
       systemPrompt: PERSONA_MEMORY_TRIAGE_SYSTEM_PROMPT,
       userPrompt: buildMemoryTriageUserPrompt(input),
+      workflow: "memory_triage",
     });
     const decision = parsePersonaMemoryTriageDecision(output);
     return applyMemoryTriageHardGates({
@@ -2059,6 +2063,7 @@ export async function triagePostResponseInteractionMemoryWithLlm(input: {
   const logger = resolvePersonaLogger(input.logger);
   try {
     const output = await input.llm({
+      schema: personaMemoryTriageDecisionSchema,
       systemPrompt: PERSONA_MEMORY_TRIAGE_SYSTEM_PROMPT,
       userPrompt: buildMemoryTriageUserPrompt({
         assistantMessage: input.assistantMessage,
@@ -2066,6 +2071,7 @@ export async function triagePostResponseInteractionMemoryWithLlm(input: {
         persona: input.persona,
         turnPlan: input.turnPlan,
       }),
+      workflow: "memory_triage",
     });
     const decision = parsePersonaMemoryTriageDecision(output);
     return applyMemoryTriageHardGates({
